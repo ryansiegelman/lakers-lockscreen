@@ -91,7 +91,7 @@ class Layout:
     tag_letter: float = 0.6000           # letter size, of tag height
     tag_tracking: float = 0.120
     tag_gap: float = 0.0450             # space between text block and tag, of chip width
-    tag_right_pad: float = 0.1100       # tag inset from the chip's right edge
+    tag_right_pad: float = 0.0650       # tag inset from the chip's right edge
     justify_lines: bool = True         # stretch both lines to a shared width
     tag_outline: float = 0.000          # white keyline around the tag, of tag height
     tag_text_stroke: float = 0.032      # black keyline on the letters, of letter size

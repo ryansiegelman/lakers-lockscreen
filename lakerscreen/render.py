@@ -170,7 +170,7 @@ def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run]) -> None:
 
 
 def _fmt_date(g: Game) -> str:
-    return g.start_local.strftime("%a, %-m/%-d").upper()
+    return g.start_local.strftime("%a %-m/%-d").upper()
 
 
 def _fmt_time(g: Game) -> str:

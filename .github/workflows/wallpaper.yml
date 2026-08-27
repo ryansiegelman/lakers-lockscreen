@@ -1,0 +1,49 @@
+name: render wallpaper
+
+# Times are UTC. 10:00 UTC = 3am PT, 17:00 = 10am PT, 06:00 = 11pm PT
+# (the late one is what catches West-coast games finishing after 10pm).
+on:
+  schedule:
+    - cron: "0 6,10,17 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Fetch Oswald
+        # Closest free match to the reference lettering; macOS's Avenir Next
+        # Condensed is not redistributable and does not exist on the runner.
+        run: curl -sL -o oswald.ttf
+          "https://github.com/google/fonts/raw/main/ofl/oswald/Oswald%5Bwght%5D.ttf"
+
+      - name: Render
+        run: |
+          python generate.py \
+            --device "${DEVICE:-iphone-17-pro}" \
+            --font oswald.ttf --font-variation Bold \
+            --ttl 0 \
+            -o docs/wallpaper.png
+        env:
+          DEVICE: ${{ vars.DEVICE }}
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/wallpaper.png
+          git diff --staged --quiet && echo "no change" && exit 0
+          git commit -m "wallpaper: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push

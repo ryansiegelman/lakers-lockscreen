@@ -33,7 +33,8 @@ jobs:
         run: |
           python generate.py \
             --device "${DEVICE:-iphone-17-pro}" \
-            --font oswald.ttf --font-variation Bold \
+            --font oswald.ttf \
+            --font-variation Bold --font-variation-light Regular \
             --ttl 0 \
             -o docs/wallpaper.png
         env:

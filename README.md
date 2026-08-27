@@ -84,9 +84,21 @@ https://<you>.github.io/<repo>/wallpaper.png
 Set your device with a repo variable (*Settings → Secrets and variables →
 Actions → Variables*): name `DEVICE`, value e.g. `iphone-17-pro`.
 
-**Your Mac.** `./.venv/bin/python serve.py` exposes
-`http://<your-mac-ip>:8787/wallpaper.png`. Works on your home Wi-Fi; add
-Tailscale if you want it away from home. The Mac has to be awake.
+**Your Mac (installed).** A launchd agent runs `serve.py` on port 8787 and
+restarts it automatically:
+
+    ~/Library/LaunchAgents/com.ryansiegelman.lakerscreen.plist
+
+It exposes `http://<your-mac-ip>:8787/wallpaper.png` on your home Wi-Fi, logs
+to `~/Library/Logs/lakerscreen.log`, and re-renders at most every 15 minutes.
+Manage it with:
+
+    launchctl bootout   gui/$(id -u)/com.ryansiegelman.lakerscreen   # stop
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ryansiegelman.lakerscreen.plist
+
+Two limits: the Mac must be awake to answer, and it only works on your home
+network unless you add Tailscale. Use the GitHub option if you want the
+wallpaper to keep updating while the Mac is asleep or you are away.
 
 **Manual.** Run `generate.py` and AirDrop the PNG whenever you feel like it.
 

@@ -357,7 +357,7 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         tx1 = _tag_x1 if _tag_x1 is not None else x1 - w * lay.tag_right_pad
         tcy = (y0 + y1) / 2.0
         c.rounded_rect((tx1 - tw, tcy - th / 2.0, tx1, tcy + th / 2.0),
-                       th * lay.badge_radius,
+                       th * lay.tag_radius,
                        fill=accent if lay.tag_fill_accent else pal.badge_fill,
                        outline=pal.chip_border if lay.tag_outline > 0 else None,
                        width=th * lay.tag_outline)

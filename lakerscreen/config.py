@@ -86,10 +86,11 @@ class Layout:
     pill_text_boost: float = 1.45       # date/time enlargement in pill mode
     # "tag" marker: team code in a rounded rectangle built to the same corner
     # proportions as the W/L badge, so the two read as one shape language.
-    tag_h: float = 0.2500                # tag height, of chip height
-    tag_pad: float = 0.3000              # horizontal padding inside, of tag height
-    tag_letter: float = 0.6000           # letter size, of tag height
-    tag_tracking: float = 0.120
+    tag_h: float = 0.3200                # tag height, of chip height
+    tag_pad: float = 0.1600              # horizontal padding inside, of tag height
+    tag_letter: float = 0.4800           # letter size, of tag height
+    tag_tracking: float = 0.060
+    tag_radius: float = 0.500          # tag corner radius, of tag height
     tag_gap: float = 0.0450             # space between text block and tag, of chip width
     tag_right_pad: float = 0.0650       # tag inset from the chip's right edge
     justify_lines: bool = True         # stretch both lines to a shared width

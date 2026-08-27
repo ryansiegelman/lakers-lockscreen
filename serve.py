@@ -35,7 +35,8 @@ def render_png(device: str, month, tz: str) -> bytes:
             return hit[1]
 
     cfg = Config(device=device, month=month, timezone=tz, team=OPTS.team,
-                 background=OPTS.bg, show_scores=not OPTS.no_scores, scrim=OPTS.scrim,
+                 background=OPTS.bg, background_align=OPTS.bg_align,
+                 show_scores=not OPTS.no_scores, scrim=OPTS.scrim,
                  wordmark_path=OPTS.wordmark, show_month=OPTS.show_month,
                  record_includes_postseason=OPTS.playoff_record)
     img, month_key, shown, record = build(cfg, ttl=OPTS.refresh)
@@ -110,6 +111,7 @@ def main() -> int:
     p.add_argument("--tz", default="America/Los_Angeles")
     p.add_argument("--team", default="lal")
     p.add_argument("--bg")
+    p.add_argument("--bg-align", default="center", choices=("top", "center", "bottom"))
     p.add_argument("--scrim", type=float, default=0.34)
     p.add_argument("--no-scores", action="store_true")
     p.add_argument("--wordmark")

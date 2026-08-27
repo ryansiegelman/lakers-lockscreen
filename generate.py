@@ -23,6 +23,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--tz", default="America/Los_Angeles", help="timezone for tip-off times")
     p.add_argument("--team", default="lal", help="ESPN team slug")
     p.add_argument("--bg", help="background photo (cover-cropped); default is synthetic water")
+    p.add_argument("--bg-align", default="center", choices=("top", "center", "bottom"),
+                   help="which part of a landscape photo to keep when cropping to portrait")
     p.add_argument("--scrim", type=float, default=0.34,
                    help="0-1 darkening behind the grid for legibility")
     p.add_argument("--no-scores", action="store_true",
@@ -57,7 +59,8 @@ def main(argv=None) -> int:
 
     cfg = Config(
         device=args.device, size=size, timezone=args.tz, team=args.team,
-        background=args.bg, show_scores=not args.no_scores, scrim=args.scrim,
+        background=args.bg, background_align=args.bg_align,
+        show_scores=not args.no_scores, scrim=args.scrim,
         month=args.month, wordmark_path=args.wordmark, show_month=args.show_month,
         record_includes_postseason=args.playoff_record,
     )

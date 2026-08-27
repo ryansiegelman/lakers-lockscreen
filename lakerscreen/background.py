@@ -11,14 +11,24 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_BG_DIR = os.path.join(ROOT, "assets", "backgrounds")
 
 
-def cover_crop(img: Image.Image, size: Tuple[int, int]) -> Image.Image:
-    """Scale + centre-crop so the image exactly fills `size` without distortion."""
+def cover_crop(img: Image.Image, size: Tuple[int, int], align: str = "center") -> Image.Image:
+    """Scale + crop so the image exactly fills `size` without distortion.
+
+    `align` picks which part of the vertical run survives when a landscape
+    photo is cropped to a phone's portrait aspect: "top", "center" or "bottom".
+    """
     tw, th = size
     sw, sh = img.size
     scale = max(tw / sw, th / sh)
     nw, nh = max(tw, int(round(sw * scale))), max(th, int(round(sh * scale)))
     img = img.resize((nw, nh), Image.LANCZOS)
-    left, top = (nw - tw) // 2, (nh - th) // 2
+    left = (nw - tw) // 2
+    if align == "top":
+        top = 0
+    elif align == "bottom":
+        top = nh - th
+    else:
+        top = (nh - th) // 2
     return img.crop((left, top, left + tw, top + th))
 
 
@@ -112,7 +122,8 @@ def _cached_water(size: Tuple[int, int], seed: int) -> Image.Image:
     return img
 
 
-def load_background(size: Tuple[int, int], path: Optional[str] = None, seed: int = 7) -> Image.Image:
+def load_background(size: Tuple[int, int], path: Optional[str] = None, seed: int = 7,
+                    align: str = "center") -> Image.Image:
     """User-supplied image if given, else assets/backgrounds/default.*, else synthetic."""
     candidates = []
     if path:
@@ -123,7 +134,7 @@ def load_background(size: Tuple[int, int], path: Optional[str] = None, seed: int
     for cand in candidates:
         if cand and os.path.exists(cand):
             try:
-                return cover_crop(Image.open(cand).convert("RGB"), size)
+                return cover_crop(Image.open(cand).convert("RGB"), size, align)
             except Exception as exc:
                 if path and cand == path:
                     raise SystemExit("Could not open background %r: %s" % (path, exc))

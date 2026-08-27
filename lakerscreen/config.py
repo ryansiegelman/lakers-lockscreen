@@ -101,6 +101,7 @@ class Config:
     team_color: str = "552583"       # hex used to key the wordmark out of the logo
     wordmark_path: Optional[str] = None  # override with your own PNG
     background: Optional[str] = None
+    background_align: str = "center"   # top | center | bottom crop for tall screens
     show_scores: bool = True
     record_includes_postseason: bool = False
     scrim: float = 0.34                 # darkening behind the grid, 0..1

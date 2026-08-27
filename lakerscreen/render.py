@@ -262,7 +262,7 @@ def build(cfg: Config, ttl: Optional[int] = None
     shown_season = shown[0].season if shown else season
     record = season_record(games, shown_season, cfg.record_includes_postseason)
 
-    base = background.load_background((W, H), cfg.background)
+    base = background.load_background((W, H), cfg.background, align=cfg.background_align)
     base = background.apply_scrim(base, cfg.scrim, lay.grid_top, lay.record_y)
     c = _Canvas((W, H))
 

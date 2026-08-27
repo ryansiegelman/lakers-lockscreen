@@ -96,9 +96,16 @@ Manage it with:
     launchctl bootout   gui/$(id -u)/com.ryansiegelman.lakerscreen   # stop
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ryansiegelman.lakerscreen.plist
 
-Two limits: the Mac must be awake to answer, and it only works on your home
-network unless you add Tailscale. Use the GitHub option if you want the
-wallpaper to keep updating while the Mac is asleep or you are away.
+A second agent keeps the Mac awake so it can answer overnight:
+
+    ~/Library/LaunchAgents/com.ryansiegelman.lakerscreen-awake.plist
+
+It runs `caffeinate -s`, which asserts only while on AC power - on battery the
+Mac still sleeps normally. Remove it with `launchctl bootout` the same way.
+
+Remaining limit: this only works on your home network. Use the GitHub option
+if you want the wallpaper to keep updating while you are away from home, or
+with the Mac shut or unplugged.
 
 **Manual.** Run `generate.py` and AirDrop the PNG whenever you feel like it.
 

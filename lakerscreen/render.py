@@ -89,8 +89,8 @@ def _text_run(c: _Canvas, text: str, size: float, fill, tracking: float = 0.0,
             "tracking": tracking, "gap": gap, "w": c.text_width(text, font, tracking)}
 
 
-def _swatch_run(size: float, fill, gap: float = 0.0) -> Run:
-    return {"kind": "swatch", "size": size, "fill": fill, "gap": gap, "w": size}
+def _swatch_run(width: float, height: float, fill, gap: float = 0.0) -> Run:
+    return {"kind": "swatch", "h": height, "fill": fill, "gap": gap, "w": width}
 
 
 def _runs_width(runs: Sequence[Run]) -> float:
@@ -116,8 +116,8 @@ def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run]) -> None:
             c.text((x, cy), r["text"], r["font"], r["fill"],
                    tracking=float(r["tracking"]), anchor="lc")
         else:
-            s = float(r["size"])
-            c.rect((x, cy - s / 2.0, x + s, cy + s / 2.0), fill=r["fill"])
+            hh, ww = float(r["h"]), float(r["w"])
+            c.rect((x, cy - hh / 2.0, x + ww, cy + hh / 2.0), fill=r["fill"])
         x += float(r["w"]) + (float(r["gap"]) if i < len(runs) - 1 else 0.0)
 
 
@@ -186,8 +186,8 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config) -> None:
     swatch = pal.gold if g.is_home else pal.purple
     _draw_runs(c, rcx, ya, _fit(
         lambda s: [_text_run(c, "vs" if g.is_home else "at", s, pal.text,
-                             tracking=s * 0.06, gap=h * 0.11),
-                   _swatch_run(h * lay.dot_size, swatch)],
+                             tracking=s * lay.vs_tracking, gap=h * lay.dot_gap),
+                   _swatch_run(h * lay.dot_w, h * lay.dot_h, swatch)],
         h * lay.vs_size, rw, floor))
     _draw_runs(c, rcx, yb, _fit(
         lambda s: [_text_run(c, g.opponent, s, pal.text, tracking=s * lay.team_tracking)],
@@ -270,7 +270,7 @@ def build(cfg: Config, ttl: Optional[int] = None
         rows = int(math.ceil(len(shown) / 2.0))
         band_top, band_bottom = H * lay.grid_top, H * lay.grid_bottom
         band = band_bottom - band_top
-        pitch = min(band / rows, H * 0.0753)      # never stretch light months
+        pitch = min(band / rows, H * lay.max_pitch)   # never stretch light months
         chip_h = min(pitch * lay.chip_height_ratio, H * lay.chip_max_height)
         start_y = band_top + (band - pitch * rows) / 2.0
 

@@ -54,31 +54,36 @@ class Layout:
     Derived from the reference mockup so the design scales to any iPhone.
     """
     # Vertical band the two-column grid may occupy (below clock, above footer).
-    grid_top: float = 0.270
-    grid_bottom: float = 0.856
+    # Every value below was measured off the reference lock screen at 1206x2622.
+    grid_top: float = 0.2796
+    grid_bottom: float = 0.8748
     # Horizontal geometry.
-    side_margin: float = 0.125          # fraction of width
-    column_gutter: float = 0.051        # fraction of width
+    side_margin: float = 0.1202         # fraction of width
+    column_gutter: float = 0.0730       # fraction of width
     # Chip proportions.
-    chip_height_ratio: float = 0.68     # of the per-row pitch
-    chip_max_height: float = 0.052      # of image height, caps chips in light months
+    max_pitch: float = 0.0744           # row-to-row spacing cap, of image height
+    chip_height_ratio: float = 0.815    # of the per-row pitch
+    chip_max_height: float = 0.0610     # of image height, caps chips in light months
     corner_radius_ratio: float = 0.30   # of chip height
-    border_ratio: float = 0.048         # of chip height
-    stack_dx: float = -0.018            # sticker-stack offset, of chip height
-    stack_dy: float = 0.090
-    # Chip interior. Contents are laid out in two zones, each centred on itself.
-    pad_x_ratio: float = 0.060          # of chip width
-    split: float = 0.635                # boundary between date zone and team zone
-    zone_gap: float = 0.030             # dead space at the boundary, of chip width
-    line1_y: float = 0.315              # vertical centres of the two text lines
-    line2_y: float = 0.700
-    date_size: float = 0.265            # font sizes, of chip height
-    time_size: float = 0.315
-    vs_size: float = 0.225
-    team_size: float = 0.290
-    dot_size: float = 0.105             # square swatch, of chip height
-    date_tracking: float = 0.050        # letter-spacing, as a fraction of font size
-    team_tracking: float = 0.170
+    border_ratio: float = 0.063         # of chip height
+    stack_dx: float = -0.025            # sticker-stack offset, of chip height
+    stack_dy: float = 0.069
+    # Chip interior. Contents sit in two zones, each centred on itself.
+    pad_x_ratio: float = 0.128          # of chip width
+    split: float = 0.592                # boundary between date zone and team zone
+    zone_gap: float = 0.184             # dead space at the boundary, of chip width
+    line1_y: float = 0.355              # vertical centres of the two text lines
+    line2_y: float = 0.645
+    date_size: float = 0.2248           # font sizes, of chip height
+    time_size: float = 0.2295
+    vs_size: float = 0.2216
+    team_size: float = 0.2103
+    dot_w: float = 0.085                # home/away swatch, of chip height
+    dot_h: float = 0.058
+    dot_gap: float = 0.170              # space between vs/at and the swatch
+    date_tracking: float = 0.120        # letter-spacing, as a fraction of font size
+    vs_tracking: float = 0.250
+    team_tracking: float = 0.344
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.
     grid_bottom_pad: float = 0.0

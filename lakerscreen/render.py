@@ -189,14 +189,15 @@ def _chip_lines(c: _Canvas, g: Game, cfg: Config, w: float, h: float, scale: flo
     applied to every chip, keeping type identical across the grid.
     """
     lay, pal = cfg.layout, cfg.palette
+    boost = lay.pill_text_boost if cfg.marker == "pill" else 1.0
 
-    ds = h * lay.date_size * scale
+    ds = h * lay.date_size * scale * boost
     weekday, datestr = _fmt_date(g)
     top_left = [_text_run(c, weekday, ds, pal.text, tracking=ds * lay.date_tracking,
                           gap=ds * lay.date_gap),
                 _text_run(c, datestr, ds, pal.text, tracking=ds * lay.date_tracking)]
 
-    s = h * lay.time_size * scale
+    s = h * lay.time_size * scale * boost
     if g.completed and g.won is not None:
         bs = h * lay.badge_size * scale
         bot_left = [_badge_run(c, "W" if g.won else "L", bs, bs * lay.badge_radius,
@@ -214,6 +215,8 @@ def _chip_lines(c: _Canvas, g: Game, cfg: Config, w: float, h: float, scale: flo
         bot_left = [_text_run(c, _fmt_time(g), s, pal.text, weight="light")]
 
     accent = pal.gold if g.is_home else pal.purple
+    if cfg.marker == "pill":
+        return top_left, bot_left, None, []
     ts = h * lay.team_size * scale
     team = lambda fill: [_text_run(c, g.opponent, ts, fill,
                                    tracking=ts * lay.team_tracking, weight="light")]
@@ -240,6 +243,10 @@ def _zones(cfg: Config, w: float):
     lay = cfg.layout
     pad = w * lay.pad_x_ratio
     half = w * lay.zone_gap / 2.0
+    if cfg.marker == "pill":
+        # One text block; the pill occupies the right edge and is drawn directly.
+        pill = w * lay.pill_w + w * lay.pill_gap
+        return (pad, w - pad - pill, w - pad, w - pad)
     split = lay.split if cfg.marker == "vs" else lay.split_compact
     lz0 = pad + (w * lay.stripe_w * 1.6 if cfg.marker == "stripe" else 0.0)
     lz1 = w * split - half
@@ -282,6 +289,27 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> Non
     ya, yb = y0 + h * lay.line1_y, y0 + h * lay.line2_y
 
     tl, bl, tr, br = _chip_lines(c, g, cfg, w, h, scale)
+
+    if cfg.marker == "pill":
+        pw = w * lay.pill_w
+        ph = h * lay.pill_h
+        px0 = x1 - w * lay.pad_x_ratio - pw
+        py0 = y0 + (h - ph) / 2.0
+        c.rounded_rect((px0, py0, px0 + pw, py0 + ph), pw / 2.0,
+                       fill=pal.gold if g.is_home else pal.purple)
+        letters = list(g.opponent)
+        lsz = pw * lay.pill_letter
+        lead = lsz * lay.pill_leading
+        font = c.font(lsz)
+        mode = lay.pill_text_mode
+        if mode == "auto":
+            # Gold is light enough to take dark letters; the purple is not.
+            fill = pal.badge_text if g.is_home else pal.text
+        else:
+            fill = pal.badge_text if mode == "dark" else pal.text
+        top = py0 + ph / 2.0 - lead * (len(letters) - 1) / 2.0
+        for i, ch in enumerate(letters):
+            c.text((px0 + pw / 2.0, top + i * lead), ch, font, fill, anchor="mc")
 
     if cfg.marker == "stripe":
         sw = w * lay.stripe_w

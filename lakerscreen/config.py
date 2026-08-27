@@ -73,7 +73,17 @@ class Layout:
     pad_x_ratio: float = 0.0650          # of chip width
     split: float = 0.6400
     split_compact: float = 0.7300       # split when the marker needs less room
-    stripe_w: float = 0.075             # home/away edge stripe, of chip width                # boundary between date zone and team zone
+    stripe_w: float = 0.075             # home/away edge stripe, of chip width
+    # "pill" marker: a gold/purple capsule on the right holding the team code
+    # stacked vertically, freeing the rest of the chip for date and time.
+    pill_w: float = 0.125               # of chip width
+    pill_h: float = 0.860               # of chip height
+    pill_gap: float = 0.060             # space between text block and pill, of chip width
+    pill_letter: float = 0.760          # letter size, of pill width
+    pill_leading: float = 0.860         # line spacing, of letter size
+    pill_text_mode: str = "auto"        # auto | dark | light; auto = dark on gold,
+                                        # white on purple, for best contrast either way
+    pill_text_boost: float = 1.45       # date/time enlargement in pill mode                # boundary between date zone and team zone
     zone_gap: float = 0.0550             # dead space at the boundary, of chip width
     line1_y: float = 0.355              # vertical centres of the two text lines
     line2_y: float = 0.645
@@ -110,7 +120,7 @@ class Config:
     device: str = DEFAULT_DEVICE
     size: Optional[Tuple[int, int]] = None
     timezone: str = "America/Los_Angeles"
-    marker: str = "vs"                  # vs | tint | dot | stripe
+    marker: str = "vs"                  # vs | tint | dot | stripe | pill
     team: str = "lal"
     team_color: str = "552583"       # hex used to key the wordmark out of the logo
     wordmark_path: Optional[str] = None  # override with your own PNG

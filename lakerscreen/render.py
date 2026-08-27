@@ -56,11 +56,13 @@ class _Canvas:
         s = self.ss
         self.draw.rectangle([box[0] * s, box[1] * s, box[2] * s, box[3] * s], fill=fill)
 
-    def text(self, xy, text, font, fill, tracking=0.0, anchor="lc"):
+    def text(self, xy, text, font, fill, tracking=0.0, anchor="lc",
+             stroke_width=0.0, stroke_fill=None):
         s = self.ss
         return assets.draw_tracked(
             self.draw, (xy[0] * s, xy[1] * s), text, font, fill,
             tracking_px=tracking * s, anchor=anchor,
+            stroke_width=stroke_width * s, stroke_fill=stroke_fill,
         ) / s
 
     def paste_centered(self, img: Image.Image, center, width: float) -> float:
@@ -83,10 +85,11 @@ class _Canvas:
 # and centred as a unit, so every chip's contents sit centred in their zone.
 
 def _text_run(c: _Canvas, text: str, size: float, fill, tracking: float = 0.0,
-              gap: float = 0.0) -> Run:
+              gap: float = 0.0, stroke: float = 0.0, stroke_fill=None) -> Run:
     font = c.font(size)
     return {"kind": "text", "text": text, "font": font, "fill": fill,
-            "tracking": tracking, "gap": gap, "w": c.text_width(text, font, tracking)}
+            "tracking": tracking, "gap": gap, "stroke": stroke,
+            "stroke_fill": stroke_fill, "w": c.text_width(text, font, tracking)}
 
 
 def _swatch_run(width: float, height: float, fill, gap: float = 0.0) -> Run:
@@ -109,12 +112,37 @@ def _fit(factory: Callable[[float], List[Run]], size: float, max_w: float,
     return runs
 
 
+def _justify(c: _Canvas, runs: List[Run], target: float) -> List[Run]:
+    """Stretch a line to `target` width by opening up its letter-spacing.
+
+    Used to make the date line and the result line exactly the same width, so
+    they align flush on both edges instead of each centring independently.
+    """
+    natural = _runs_width(runs)
+    if not runs or natural >= target:
+        return runs
+    gaps = sum(len(str(r["text"])) - 1 for r in runs if r["kind"] == "text")
+    gaps += len(runs) - 1
+    if gaps <= 0:
+        return runs
+    extra = (target - natural) / gaps
+    for i, r in enumerate(runs):
+        if r["kind"] == "text":
+            r["tracking"] = float(r["tracking"]) + extra
+            r["w"] = c.text_width(str(r["text"]), r["font"], float(r["tracking"]))
+        if i < len(runs) - 1:
+            r["gap"] = float(r["gap"]) + extra
+    return runs
+
+
 def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run]) -> None:
     x = cx - _runs_width(runs) / 2.0
     for i, r in enumerate(runs):
         if r["kind"] == "text":
             c.text((x, cy), r["text"], r["font"], r["fill"],
-                   tracking=float(r["tracking"]), anchor="lc")
+                   tracking=float(r["tracking"]), anchor="lc",
+                   stroke_width=float(r.get("stroke", 0.0)),
+                   stroke_fill=r.get("stroke_fill"))
         else:
             hh, ww = float(r["h"]), float(r["w"])
             c.rect((x, cy - hh / 2.0, x + ww, cy + hh / 2.0), fill=r["fill"])
@@ -153,19 +181,24 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config) -> None:
     floor = lay.min_shrink
 
     # Left zone, top line: the date.
-    _draw_runs(c, lcx, ya, _fit(
+    top_left = _fit(
         lambda s: [_text_run(c, _fmt_date(g), s, pal.text, tracking=s * lay.date_tracking)],
-        h * lay.date_size, lw, floor))
+        h * lay.date_size, lw, floor)
 
     # Left zone, bottom line: tip-off time before the game, result after it.
     if g.completed and g.won is not None:
-        letter, colour = ("W", pal.win) if g.won else ("L", pal.loss)
+        letter = "W" if g.won else "L"
         score = g.score_line if cfg.show_scores else ""
 
         def bottom(s: float) -> List[Run]:
-            runs = [_text_run(c, letter, s, colour, gap=s * 0.30)]
+            # Outlined badge: black fill, white keyline, set smaller than the
+            # score and held off it by a wider gap.
+            runs = [_text_run(c, letter, s * lay.result_size, pal.result_fill,
+                              gap=s * lay.result_gap,
+                              stroke=s * lay.result_size * lay.result_stroke,
+                              stroke_fill=pal.result_outline)]
             if score:
-                runs.append(_text_run(c, score, s * 0.95, pal.text_dim))
+                runs.append(_text_run(c, score, s, pal.text))
             return runs
     elif g.state == "in":
         live = "%d-%d" % (g.team_score, g.opp_score) \
@@ -180,18 +213,26 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config) -> None:
         def bottom(s: float) -> List[Run]:
             return [_text_run(c, _fmt_time(g), s, pal.text)]
 
-    _draw_runs(c, lcx, yb, _fit(bottom, h * lay.time_size, lw, floor))
+    bot_left = _fit(bottom, h * lay.time_size, lw, floor)
 
     # Right zone: home/away marker over the opponent's code.
     swatch = pal.gold if g.is_home else pal.purple
-    _draw_runs(c, rcx, ya, _fit(
+    top_right = _fit(
         lambda s: [_text_run(c, "vs" if g.is_home else "at", s, pal.text,
                              tracking=s * lay.vs_tracking, gap=h * lay.dot_gap),
                    _swatch_run(h * lay.dot_w, h * lay.dot_h, swatch)],
-        h * lay.vs_size, rw, floor))
-    _draw_runs(c, rcx, yb, _fit(
+        h * lay.vs_size, rw, floor)
+    bot_right = _fit(
         lambda s: [_text_run(c, g.opponent, s, pal.text, tracking=s * lay.team_tracking)],
-        h * lay.team_size, rw, floor))
+        h * lay.team_size, rw, floor)
+
+    # Square each pair off: both lines in a zone get the same width, so their
+    # left and right edges line up.
+    for pair, zone_w, cx in ((( top_left, bot_left), lw, lcx),
+                             ((top_right, bot_right), rw, rcx)):
+        target = min(max(_runs_width(pair[0]), _runs_width(pair[1])), zone_w)
+        _draw_runs(c, cx, ya, _justify(c, list(pair[0]), target))
+        _draw_runs(c, cx, yb, _justify(c, list(pair[1]), target))
 
 
 def _draw_footer(c: _Canvas, size, month_key: str, record: Tuple[int, int],
@@ -258,6 +299,9 @@ def build(cfg: Config, ttl: Optional[int] = None
         fallback = next_month_with_games(games, want)
         if fallback:
             month_key, shown = fallback, games_in_month(games, fallback)
+
+    if cfg.pad_odd_months and len(shown) % 2 == 1:
+        shown = shown + [shown[-1]]
 
     shown_season = shown[0].season if shown else season
     record = season_record(games, shown_season, cfg.record_includes_postseason)

@@ -42,8 +42,8 @@ class Palette:
     chip_shadow: RGBA = (255, 255, 255, 150)  # the offset "sticker stack" edge
     text: RGBA = (255, 255, 255, 255)
     text_dim: RGBA = (176, 176, 182, 255)
-    win: RGBA = (253, 185, 39, 255)
-    loss: RGBA = (150, 150, 158, 255)
+    result_fill: RGBA = (0, 0, 0, 255)          # W/L badge: black...
+    result_outline: RGBA = (255, 255, 255, 255)  # ...with a white keyline
     live: RGBA = (255, 72, 72, 255)
 
 
@@ -84,10 +84,13 @@ class Layout:
     date_tracking: float = 0.120        # letter-spacing, as a fraction of font size
     vs_tracking: float = 0.250
     team_tracking: float = 0.344
+    result_size: float = 0.85           # W/L size relative to the score
+    result_gap: float = 0.62            # space between the W/L badge and the score
+    result_stroke: float = 0.090        # W/L outline weight, of its font size
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.
     grid_bottom_pad: float = 0.0
-    wordmark_y: float = 0.8970          # centre of the LAKERS wordmark
+    wordmark_y: float = 0.9094          # level with the flashlight/camera buttons
     wordmark_width: float = 0.235       # of image width
     record_y: float = 0.9345
     month_y: float = 0.8330
@@ -109,6 +112,7 @@ class Config:
     background_align: str = "center"   # top | center | bottom crop for tall screens
     show_scores: bool = True
     record_includes_postseason: bool = False
+    pad_odd_months: bool = True         # repeat the last game so rows stay paired
     scrim: float = 0.34                 # darkening behind the grid, 0..1
     month: Optional[str] = None         # "YYYY-MM" override; default = today
     show_month: bool = False            # print the month name above the wordmark

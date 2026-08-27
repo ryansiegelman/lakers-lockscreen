@@ -84,6 +84,8 @@ def draw_tracked(
     fill,
     tracking_px: float = 0.0,
     anchor: str = "lm",
+    stroke_width: float = 0.0,
+    stroke_fill=None,
 ) -> float:
     """Draw letter-spaced text. `anchor` accepts l/m/r for x and t/m/b/s for y.
 
@@ -105,8 +107,10 @@ def draw_tracked(
         y -= (bbox[1] + bbox[3]) / 2.0
         valign = "a"
 
+    sw = int(round(stroke_width))
     for ch in text:
-        draw.text((x, y), ch, font=font, fill=fill, anchor="l" + valign)
+        draw.text((x, y), ch, font=font, fill=fill, anchor="l" + valign,
+                  stroke_width=sw, stroke_fill=stroke_fill)
         x += char_advance(font, ch) + tracking_px
     return width
 

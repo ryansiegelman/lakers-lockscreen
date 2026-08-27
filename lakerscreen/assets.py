@@ -12,40 +12,54 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_DIR = os.path.join(ROOT, "assets", "cache")
 
-# (path, ttc face index). First one that loads wins. The reference design uses a
-# heavy condensed grotesque; these are the closest faces shipped with macOS.
-FONT_CANDIDATES: Sequence[Tuple[str, int]] = (
-    ("/System/Library/Fonts/Avenir Next Condensed.ttc", 8),   # Heavy
-    ("/System/Library/Fonts/Avenir Next Condensed.ttc", 0),   # Bold
-    ("/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf", 0),
-    ("/System/Library/Fonts/HelveticaNeue.ttc", 9),           # Condensed Black
-    ("/System/Library/Fonts/HelveticaNeue.ttc", 4),           # Condensed Bold
-    ("/System/Library/Fonts/Supplemental/Arial Narrow Bold.ttf", 0),
-    # Linux fallbacks, for rendering in CI.
-    ("/usr/share/fonts/truetype/liberation/LiberationSansNarrow-Bold.ttf", 0),
-    ("/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf", 0),
-    ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 0),
-)
+# Two weights: chip headings are set heavy, the score/time line lighter so the
+# date reads as the dominant element. Each entry is (path, ttc face index) and
+# the first that loads wins.
+FONT_SETS: Dict[str, Sequence[Tuple[str, int]]] = {
+    "heavy": (
+        ("/System/Library/Fonts/Avenir Next Condensed.ttc", 8),   # Heavy
+        ("/System/Library/Fonts/Avenir Next Condensed.ttc", 0),   # Bold
+        ("/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf", 0),
+        ("/System/Library/Fonts/HelveticaNeue.ttc", 9),           # Condensed Black
+        ("/System/Library/Fonts/HelveticaNeue.ttc", 4),           # Condensed Bold
+        ("/System/Library/Fonts/Supplemental/Arial Narrow Bold.ttf", 0),
+        ("/usr/share/fonts/truetype/liberation/LiberationSansNarrow-Bold.ttf", 0),
+        ("/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf", 0),
+        ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 0),
+    ),
+    "light": (
+        ("/System/Library/Fonts/Avenir Next Condensed.ttc", 5),   # Medium
+        ("/System/Library/Fonts/Avenir Next Condensed.ttc", 7),   # Regular
+        ("/System/Library/Fonts/HelveticaNeue.ttc", 10),          # Medium
+        ("/System/Library/Fonts/Supplemental/Arial Narrow.ttf", 0),
+        ("/usr/share/fonts/truetype/liberation/LiberationSansNarrow-Regular.ttf", 0),
+        ("/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf", 0),
+        ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 0),
+    ),
+}
 
 _font_override: Optional[Tuple[str, int]] = None
-_font_variation: Optional[str] = None
+_variations: Dict[str, Optional[str]] = {"heavy": None, "light": None}
 
 
-def set_font(path: str, index: int = 0, variation: Optional[str] = None) -> None:
+def set_font(path: str, index: int = 0, variation: Optional[str] = None,
+             light_variation: Optional[str] = None) -> None:
     """Point the renderer at a specific font file (e.g. a downloaded Oswald).
 
-    `variation` names an instance inside a variable font, e.g. "Bold".
+    `variation` / `light_variation` name instances inside a variable font,
+    e.g. "Bold" and "Regular".
     """
-    global _font_override, _font_variation
+    global _font_override
     _font_override = (path, index)
-    _font_variation = variation
+    _variations["heavy"] = variation
+    _variations["light"] = light_variation or variation
     load_font.cache_clear()
 
 
-@lru_cache(maxsize=256)
-def load_font(size: int) -> ImageFont.FreeTypeFont:
+@lru_cache(maxsize=512)
+def load_font(size: int, weight: str = "heavy") -> ImageFont.FreeTypeFont:
     size = max(1, int(size))
-    candidates: List[Tuple[str, int]] = list(FONT_CANDIDATES)
+    candidates: List[Tuple[str, int]] = list(FONT_SETS.get(weight, FONT_SETS["heavy"]))
     if _font_override:
         candidates.insert(0, _font_override)
     for path, index in candidates:
@@ -55,9 +69,10 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
             font = ImageFont.truetype(path, size, index=index)
         except Exception:
             continue
-        if _font_variation and _font_override and path == _font_override[0]:
+        variation = _variations.get(weight)
+        if variation and _font_override and path == _font_override[0]:
             try:
-                font.set_variation_by_name(_font_variation)
+                font.set_variation_by_name(variation)
             except Exception:
                 pass
         return font

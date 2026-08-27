@@ -42,8 +42,8 @@ class Palette:
     chip_shadow: RGBA = (255, 255, 255, 150)  # the offset "sticker stack" edge
     text: RGBA = (255, 255, 255, 255)
     text_dim: RGBA = (176, 176, 182, 255)
-    result_fill: RGBA = (0, 0, 0, 255)          # W/L badge: black...
-    result_outline: RGBA = (255, 255, 255, 255)  # ...with a white keyline
+    badge_fill: RGBA = (255, 255, 255, 255)     # W/L badge: white square...
+    badge_text: RGBA = (0, 0, 0, 255)           # ...with a black letter
     live: RGBA = (255, 72, 72, 255)
 
 
@@ -75,7 +75,7 @@ class Layout:
     line1_y: float = 0.355              # vertical centres of the two text lines
     line2_y: float = 0.645
     date_size: float = 0.2800           # font sizes, of chip height
-    time_size: float = 0.2295
+    time_size: float = 0.2000
     vs_size: float = 0.2216
     team_size: float = 0.2103
     dot_w: float = 0.085                # home/away swatch, of chip height
@@ -84,9 +84,10 @@ class Layout:
     date_tracking: float = 0.050        # letter-spacing, as a fraction of font size
     vs_tracking: float = 0.250
     team_tracking: float = 0.344
-    result_size: float = 0.480          # W/L size relative to the score
+    badge_size: float = 0.190           # W/L badge square, of chip height
+    badge_radius: float = 0.300         # corner radius, of badge size
+    badge_font: float = 0.720           # letter size inside the badge, of badge size
     result_gap: float = 0.45            # space between the W/L badge and the score
-    result_stroke: float = 0.060        # W/L outline weight, of its font size
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.
     grid_bottom_pad: float = 0.0
@@ -95,7 +96,7 @@ class Layout:
     record_y: float = 0.9345
     month_y: float = 0.8330
     month_size: float = 0.0215          # of image height
-    record_size: float = 0.0138
+    record_size: float = 0.0112
     month_tracking: float = 0.300
     record_tracking: float = 0.150
 

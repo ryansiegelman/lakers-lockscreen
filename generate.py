@@ -38,6 +38,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--font", help="path to a .ttf/.otf to use instead of the system font")
     p.add_argument("--font-index", type=int, default=0, help="face index inside a .ttc")
     p.add_argument("--font-variation", help='named instance in a variable font, e.g. "Bold"')
+    p.add_argument("--font-variation-light", help='lighter instance for the score line, e.g. "Regular"')
     p.add_argument("--ttl", type=int, default=900,
                    help="seconds to reuse cached ESPN data (0 = always refetch)")
     p.add_argument("-q", "--quiet", action="store_true")
@@ -47,7 +48,8 @@ def parse_args(argv=None) -> argparse.Namespace:
 def main(argv=None) -> int:
     args = parse_args(argv)
     if args.font:
-        assets.set_font(args.font, args.font_index, args.font_variation)
+        assets.set_font(args.font, args.font_index, args.font_variation,
+                        args.font_variation_light)
 
     size = None
     if args.size:

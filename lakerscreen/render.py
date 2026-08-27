@@ -38,8 +38,8 @@ class _Canvas:
         self.layer = Image.new("RGBA", (size[0] * ss, size[1] * ss), (0, 0, 0, 0))
         self.draw = ImageDraw.Draw(self.layer)
 
-    def font(self, size: float):
-        return assets.load_font(int(round(size * self.ss)))
+    def font(self, size: float, weight: str = "heavy"):
+        return assets.load_font(int(round(size * self.ss)), weight)
 
     def text_width(self, text: str, font, tracking: float = 0.0) -> float:
         return assets.tracked_width(font, text, tracking * self.ss) / self.ss
@@ -86,12 +86,20 @@ class _Canvas:
 
 def _text_run(c: _Canvas, text: str, size: float, fill, tracking: float = 0.0,
               gap: float = 0.0, stroke: float = 0.0, stroke_fill=None,
-              fixed_gap: bool = False) -> Run:
-    font = c.font(size)
+              fixed_gap: bool = False, weight: str = "heavy") -> Run:
+    font = c.font(size, weight)
     return {"kind": "text", "text": text, "font": font, "fill": fill,
             "tracking": tracking, "gap": gap, "stroke": stroke,
             "stroke_fill": stroke_fill, "fixed_gap": fixed_gap,
             "w": c.text_width(text, font, tracking)}
+
+
+def _badge_run(c: _Canvas, letter: str, size: float, radius: float, fill, text_fill,
+               font_size: float, gap: float = 0.0, fixed_gap: bool = False) -> Run:
+    """A filled rounded square with a letter knocked out of it."""
+    return {"kind": "badge", "text": letter, "size": size, "radius": radius,
+            "fill": fill, "text_fill": text_fill, "font": c.font(font_size),
+            "gap": gap, "fixed_gap": fixed_gap, "w": size}
 
 
 def _swatch_run(width: float, height: float, fill, gap: float = 0.0) -> Run:
@@ -149,6 +157,12 @@ def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run]) -> None:
                    tracking=float(r["tracking"]), anchor="lc",
                    stroke_width=float(r.get("stroke", 0.0)),
                    stroke_fill=r.get("stroke_fill"))
+        elif r["kind"] == "badge":
+            sz = float(r["size"])
+            c.rounded_rect((x, cy - sz / 2.0, x + sz, cy + sz / 2.0),
+                           float(r["radius"]), fill=r["fill"])
+            c.text((x + sz / 2.0, cy), str(r["text"]), r["font"], r["text_fill"],
+                   anchor="mc")
         else:
             hh, ww = float(r["h"]), float(r["w"])
             c.rect((x, cy - hh / 2.0, x + ww, cy + hh / 2.0), fill=r["fill"])
@@ -197,14 +211,14 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config) -> None:
         score = g.score_line if cfg.show_scores else ""
 
         def bottom(s: float) -> List[Run]:
-            # Outlined badge: black fill, white keyline, set smaller than the
-            # score and held off it by a wider gap.
-            runs = [_text_run(c, letter, s * lay.result_size, pal.result_fill,
-                              gap=s * lay.result_gap,
-                              stroke=s * lay.result_size * lay.result_stroke,
-                              stroke_fill=pal.result_outline, fixed_gap=True)]
+            # White rounded square with the letter knocked out in black.
+            bs = h * lay.badge_size
+            runs = [_badge_run(c, letter, bs, bs * lay.badge_radius,
+                               pal.badge_fill, pal.badge_text,
+                               bs * lay.badge_font,
+                               gap=s * lay.result_gap, fixed_gap=True)]
             if score:
-                runs.append(_text_run(c, score, s, pal.text))
+                runs.append(_text_run(c, score, s, pal.text, weight="light"))
             return runs
     elif g.state == "in":
         live = "%d-%d" % (g.team_score, g.opp_score) \
@@ -213,11 +227,11 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config) -> None:
         def bottom(s: float) -> List[Run]:
             runs = [_text_run(c, "LIVE", s, pal.live, tracking=s * 0.06, gap=s * 0.30)]
             if live:
-                runs.append(_text_run(c, live, s * 0.95, pal.text_dim))
+                runs.append(_text_run(c, live, s * 0.95, pal.text_dim, weight="light"))
             return runs
     else:
         def bottom(s: float) -> List[Run]:
-            return [_text_run(c, _fmt_time(g), s, pal.text)]
+            return [_text_run(c, _fmt_time(g), s, pal.text, weight="light")]
 
     bot_left = _fit(bottom, h * lay.time_size, lw, floor)
 
@@ -255,8 +269,9 @@ def _draw_footer(c: _Canvas, size, month_key: str, record: Tuple[int, int],
     if wordmark is not None:
         c.paste_centered(wordmark, (cx, H * lay.wordmark_y), W * lay.wordmark_width)
 
-    c.text((cx, H * lay.record_y), "%d-%d" % record, c.font(H * lay.record_size),
-           pal.text, tracking=H * lay.record_size * lay.record_tracking, anchor="mc")
+    c.text((cx, H * lay.record_y), "%d-%d" % record,
+           c.font(H * lay.record_size, "light"), pal.text,
+           tracking=H * lay.record_size * lay.record_tracking, anchor="mc")
 
 
 def _resolve_month(cfg: Config) -> str:

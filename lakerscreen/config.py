@@ -98,7 +98,7 @@ class Layout:
     tag_right_pad: float = 0.0650       # tag inset from the chip's right edge
     justify_lines: bool = True         # stretch both lines to a shared width
     ref_line: str = "MON, 3/23"         # width every line is set to
-    tag_outline: float = 0.000          # white keyline around the tag, of tag height
+    tag_outline: float = 0.018          # white keyline around the tag, of tag height
     tag_text_stroke: float = 0.032      # black keyline on the letters, of letter size
     tag_fill_accent: bool = True        # gold/purple tag + white letters,
                                         # else white tag + dark letters                # boundary between date zone and team zone

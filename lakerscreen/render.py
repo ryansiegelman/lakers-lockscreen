@@ -152,10 +152,26 @@ def _justify(c: _Canvas, runs: List[Run], target: float) -> List[Run]:
 def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run],
                align: str = "center") -> None:
     x = cx if align == "left" else cx - _runs_width(runs) / 2.0
+
+    # Sit every run on one baseline. Centring each on its own ink instead makes
+    # runs drift apart vertically - "SUN," carries a descending comma while
+    # "3/1" has a slash reaching higher, so they end up at different heights.
+    top = bot = None
+    for r in runs:
+        if r["kind"] != "text":
+            continue
+        font = r["font"]
+        asc = font.getmetrics()[0]
+        bb = font.getbbox(str(r["text"]))
+        t, b = (bb[1] - asc) / float(c.ss), (bb[3] - asc) / float(c.ss)
+        top = t if top is None else min(top, t)
+        bot = b if bot is None else max(bot, b)
+    baseline = cy - (top + bot) / 2.0 if top is not None else cy
+
     for i, r in enumerate(runs):
         if r["kind"] == "text":
-            c.text((x, cy), r["text"], r["font"], r["fill"],
-                   tracking=float(r["tracking"]), anchor="lc",
+            c.text((x, baseline), r["text"], r["font"], r["fill"],
+                   tracking=float(r["tracking"]), anchor="ls",
                    stroke_width=float(r.get("stroke", 0.0)),
                    stroke_fill=r.get("stroke_fill"))
         elif r["kind"] == "badge":

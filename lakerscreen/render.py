@@ -170,42 +170,6 @@ def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run],
         x += float(r["w"]) + (float(r["gap"]) if i < len(runs) - 1 else 0.0)
 
 
-def _draw_runs_stretched(c: _Canvas, x: float, cy: float, runs: Sequence[Run],
-                         target: float) -> None:
-    """Draw a line widened to `target` by stretching the glyphs horizontally.
-
-    Widening with letter-spacing instead makes a short line like "7:00 PM"
-    crawl across the chip while a long one stays tight, which is exactly what
-    reads as broken when played and unplayed games sit side by side. Scaling
-    the drawn line keeps the spacing rhythm and just makes the letters wider.
-    """
-    natural = _runs_width(runs)
-    if natural <= 0:
-        return
-    factor = target / natural
-    if factor <= 1.02:
-        _draw_runs(c, x, cy, runs, align="left")
-        return
-
-    s = c.ss
-    sizes = [r["font"].size for r in runs if r["kind"] == "text"]
-    band = (max(sizes) if sizes else int(20 * s)) * 2.4
-    hpx = int(math.ceil(band))
-    wpx = int(math.ceil(natural * s)) + 2 * s
-
-    tmp = Image.new("RGBA", (max(1, wpx), max(1, hpx)), (0, 0, 0, 0))
-    keep_layer, keep_draw = c.layer, c.draw
-    c.layer, c.draw = tmp, ImageDraw.Draw(tmp)
-    try:
-        _draw_runs(c, float(s) / s, (hpx / 2.0) / s, runs, align="left")
-    finally:
-        c.layer, c.draw = keep_layer, keep_draw
-
-    tmp = tmp.resize((max(1, int(round(target * s)) + 2 * s), hpx), Image.LANCZOS)
-    keep_layer.alpha_composite(tmp, (int(round(x * s)) - s,
-                                     int(round(cy * s - hpx / 2.0))))
-
-
 def _fmt_date(g: Game):
     """Weekday and date as separate runs, so the gap between them is tunable
     rather than being whatever a space character happens to measure."""
@@ -322,6 +286,19 @@ def _vertical_scale(c: _Canvas, cfg: Config, h: float) -> float:
     return max(0.2, min(limits))
 
 
+def _line_target(c: _Canvas, cfg: Config, w: float, h: float,
+                 games: Sequence[Game], scale: float, tag_w: float) -> float:
+    """Width every chip's text block is set to. Taken across the whole month so
+    the blocks are identical and the tags line up, rather than each chip sizing
+    itself to its own content."""
+    lz0, lz1, _, _ = _zones(cfg, w, tag_w)
+    widest = 0.0
+    for g in games:
+        tl, bl, _, _ = _chip_lines(c, g, cfg, w, h, scale)
+        widest = max(widest, _runs_width(tl), _runs_width(bl))
+    return min(widest, lz1 - lz0)
+
+
 def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Game],
                 tag_w: float = 0.0) -> float:
     """Largest uniform type scale that fits both the zone widths and the chip
@@ -344,7 +321,7 @@ def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Gam
 
 
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
-               tag_w: float = 0.0) -> None:
+               tag_w: float = 0.0, line_target: float = 0.0) -> None:
     lay, pal = cfg.layout, cfg.palette
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
@@ -366,6 +343,11 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     ya, yb = y0 + h * lay.line1_y, y0 + h * lay.line2_y
 
     tl, bl, tr, br = _chip_lines(c, g, cfg, w, h, scale)
+    _tag_x1 = None
+    if lay.justify_lines and cfg.marker == "tag":
+        _slot = line_target or min(max(_runs_width(tl), _runs_width(bl)), lw)
+        _group = _slot + w * lay.tag_gap + tag_w
+        _tag_x1 = x0 + (w - _group) / 2.0 + _group
 
     if cfg.marker == "tag":
         accent = pal.gold if g.is_home else pal.purple
@@ -375,7 +357,7 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         # Uniform width, sized to the month's widest code, so the tags form a
         # clean column instead of each hugging its own letters.
         tw = tag_w if tag_w > 0 else c.text_width(g.opponent, font, tr_px) + th * lay.tag_pad * 2
-        tx1 = x1 - w * lay.tag_right_pad
+        tx1 = _tag_x1 if _tag_x1 is not None else x1 - w * lay.tag_right_pad
         tcy = (y0 + y1) / 2.0
         c.rounded_rect((tx1 - tw, tcy - th / 2.0, tx1, tcy + th / 2.0),
                        th * lay.badge_radius,
@@ -417,9 +399,17 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                        sw / 2.0, fill=pal.gold if g.is_home else pal.purple)
 
     if lay.justify_lines:
-        target = min(max(_runs_width(tl), _runs_width(bl)), lw)
-        _draw_runs_stretched(c, x0 + lz0, ya, list(tl), target)
-        _draw_runs_stretched(c, x0 + lz0, yb, list(bl), target)
+        # Each chip justifies its own two lines to their shared natural width,
+        # so tracking stays minimal. That block is then centred inside a slot
+        # sized once for the month, which is what keeps the tags in a column.
+        slot = line_target or min(max(_runs_width(tl), _runs_width(bl)), lw)
+        target = min(max(_runs_width(tl), _runs_width(bl)), slot)
+        gap = w * lay.tag_gap
+        group = slot + (gap + tag_w if cfg.marker == "tag" else 0.0)
+        gx = x0 + (w - group) / 2.0
+        tx = gx + (slot - target) / 2.0
+        _draw_runs(c, tx, ya, _justify(c, list(tl), target), align="left")
+        _draw_runs(c, tx, yb, _justify(c, list(bl), target), align="left")
     else:
         # Both lines start at the same x and keep their natural spacing.
         # Stretching them to a common width made a short line like "2:00 PM"
@@ -539,11 +529,13 @@ def build(cfg: Config, ttl: Optional[int] = None
 
         tag_w = _tag_width(c, cfg, chip_h, shown) if cfg.marker == "tag" else 0.0
         scale = _type_scale(c, cfg, col_w, chip_h, shown, tag_w)
+        line_target = _line_target(c, cfg, col_w, chip_h, shown, scale, tag_w)
         for i, g in enumerate(shown):
             row, col = divmod(i, cols)            # row-major: L, R, L, R ...
             x0 = col_x[col]
             y0 = start_y + row * pitch + (pitch - chip_h) / 2.0
-            _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale, tag_w)
+            _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale,
+                       tag_w, line_target)
 
     _draw_footer(c, (W, H), month_key, record, cfg, _wordmark(cfg, shown_season))
     return c.flatten_onto(base), month_key, shown, record

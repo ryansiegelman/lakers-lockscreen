@@ -62,7 +62,7 @@ class Layout:
     column_gutter: float = 0.0550       # fraction of width
     # Chip proportions.
     max_pitch: float = 0.0744           # row-to-row spacing cap, of image height
-    single_col_width: float = 0.4600    # chip width in single-column mode, of image width
+    single_col_width: float = 0.4000    # chip width in single-column mode, of image width
     chip_height_ratio: float = 0.8300    # of the per-row pitch
     chip_max_height: float = 0.0680     # of image height, caps chips in light months
     corner_radius_ratio: float = 0.3200   # of chip height
@@ -108,13 +108,13 @@ class Layout:
     dot_h: float = 0.058
     dot_gap: float = 0.170              # space between vs/at and the swatch
     date_tracking: float = 0.0000
-    date_gap: float = 0.1000           # space between weekday and date, of font size        # letter-spacing, as a fraction of font size
+    date_gap: float = 0.4000           # space between weekday and date, of font size        # letter-spacing, as a fraction of font size
     vs_tracking: float = 0.250
     team_tracking: float = 0.2600
     badge_size: float = 0.1350           # W/L badge square, of chip height
     badge_radius: float = 0.300         # corner radius, of badge size
     badge_font: float = 0.720           # letter size inside the badge, of badge size
-    result_gap: float = 0.45            # space between the W/L badge and the score
+    result_gap: float = 0.2600            # space between the W/L badge and the score
     chip_vpad: float = 0.0850            # inner top/bottom margin, of chip height
     line_min_gap: float = 0.0700         # minimum ink gap between the two lines
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line

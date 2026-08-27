@@ -85,11 +85,13 @@ class _Canvas:
 # and centred as a unit, so every chip's contents sit centred in their zone.
 
 def _text_run(c: _Canvas, text: str, size: float, fill, tracking: float = 0.0,
-              gap: float = 0.0, stroke: float = 0.0, stroke_fill=None) -> Run:
+              gap: float = 0.0, stroke: float = 0.0, stroke_fill=None,
+              fixed_gap: bool = False) -> Run:
     font = c.font(size)
     return {"kind": "text", "text": text, "font": font, "fill": fill,
             "tracking": tracking, "gap": gap, "stroke": stroke,
-            "stroke_fill": stroke_fill, "w": c.text_width(text, font, tracking)}
+            "stroke_fill": stroke_fill, "fixed_gap": fixed_gap,
+            "w": c.text_width(text, font, tracking)}
 
 
 def _swatch_run(width: float, height: float, fill, gap: float = 0.0) -> Run:
@@ -121,8 +123,12 @@ def _justify(c: _Canvas, runs: List[Run], target: float) -> List[Run]:
     natural = _runs_width(runs)
     if not runs or natural >= target:
         return runs
+    # A run marked fixed_gap keeps its trailing space untouched. The W/L badge
+    # uses this: otherwise every bit of slack pools into the single gap after a
+    # one-glyph run and the badge drifts away from the score it belongs to.
+    stretch = [i for i in range(len(runs) - 1) if not runs[i].get("fixed_gap")]
     gaps = sum(len(str(r["text"])) - 1 for r in runs if r["kind"] == "text")
-    gaps += len(runs) - 1
+    gaps += len(stretch)
     if gaps <= 0:
         return runs
     extra = (target - natural) / gaps
@@ -130,7 +136,7 @@ def _justify(c: _Canvas, runs: List[Run], target: float) -> List[Run]:
         if r["kind"] == "text":
             r["tracking"] = float(r["tracking"]) + extra
             r["w"] = c.text_width(str(r["text"]), r["font"], float(r["tracking"]))
-        if i < len(runs) - 1:
+        if i in stretch:
             r["gap"] = float(r["gap"]) + extra
     return runs
 
@@ -196,7 +202,7 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config) -> None:
             runs = [_text_run(c, letter, s * lay.result_size, pal.result_fill,
                               gap=s * lay.result_gap,
                               stroke=s * lay.result_size * lay.result_stroke,
-                              stroke_fill=pal.result_outline)]
+                              stroke_fill=pal.result_outline, fixed_gap=True)]
             if score:
                 runs.append(_text_run(c, score, s, pal.text))
             return runs

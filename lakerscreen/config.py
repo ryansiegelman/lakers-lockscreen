@@ -82,7 +82,8 @@ class Layout:
     dot_w: float = 0.085                # home/away swatch, of chip height
     dot_h: float = 0.058
     dot_gap: float = 0.170              # space between vs/at and the swatch
-    date_tracking: float = 0.0250        # letter-spacing, as a fraction of font size
+    date_tracking: float = 0.0250
+    date_gap: float = 0.4200           # space between weekday and date, of font size        # letter-spacing, as a fraction of font size
     vs_tracking: float = 0.250
     team_tracking: float = 0.2600
     badge_size: float = 0.1850           # W/L badge square, of chip height

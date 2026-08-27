@@ -169,8 +169,11 @@ def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run]) -> None:
         x += float(r["w"]) + (float(r["gap"]) if i < len(runs) - 1 else 0.0)
 
 
-def _fmt_date(g: Game) -> str:
-    return g.start_local.strftime("%a %-m/%-d").upper()
+def _fmt_date(g: Game):
+    """Weekday and date as separate runs, so the gap between them is tunable
+    rather than being whatever a space character happens to measure."""
+    return (g.start_local.strftime("%a").upper(),
+            g.start_local.strftime("%-m/%-d"))
 
 
 def _fmt_time(g: Game) -> str:
@@ -187,8 +190,11 @@ def _chip_lines(c: _Canvas, g: Game, cfg: Config, w: float, h: float, scale: flo
     """
     lay, pal = cfg.layout, cfg.palette
 
-    top_left = [_text_run(c, _fmt_date(g), h * lay.date_size * scale, pal.text,
-                          tracking=h * lay.date_size * scale * lay.date_tracking)]
+    ds = h * lay.date_size * scale
+    weekday, datestr = _fmt_date(g)
+    top_left = [_text_run(c, weekday, ds, pal.text, tracking=ds * lay.date_tracking,
+                          gap=ds * lay.date_gap),
+                _text_run(c, datestr, ds, pal.text, tracking=ds * lay.date_tracking)]
 
     s = h * lay.time_size * scale
     if g.completed and g.won is not None:

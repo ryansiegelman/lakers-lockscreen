@@ -32,7 +32,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--wordmark", help="PNG of your own wordmark instead of the ESPN-derived one")
     p.add_argument("--logo-width", type=float, default=None,
                    help="wordmark width as a fraction of screen width (default 0.235)")
-    p.add_argument("--single-column-max", type=int, default=0,
+    p.add_argument("--single-column-max", type=int, default=8,
                    help="months with at most this many games use one centred column")
     p.add_argument("--show-month", action="store_true", help="print the month name above the wordmark")
     p.add_argument("--playoff-record", action="store_true",

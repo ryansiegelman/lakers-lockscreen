@@ -38,7 +38,8 @@ def render_png(device: str, month, tz: str) -> bytes:
                  background=OPTS.bg, background_align=OPTS.bg_align,
                  show_scores=not OPTS.no_scores, scrim=OPTS.scrim,
                  wordmark_path=OPTS.wordmark, show_month=OPTS.show_month,
-                 record_includes_postseason=OPTS.playoff_record)
+                 record_includes_postseason=OPTS.playoff_record,
+                 single_column_max=OPTS.single_column_max)
     img, month_key, shown, record = build(cfg, ttl=OPTS.refresh)
     buf = io.BytesIO()
     img.save(buf, "PNG", compress_level=6)
@@ -117,6 +118,7 @@ def main() -> int:
     p.add_argument("--wordmark")
     p.add_argument("--show-month", action="store_true")
     p.add_argument("--playoff-record", action="store_true")
+    p.add_argument("--single-column-max", type=int, default=8)
     p.add_argument("--refresh", type=int, default=900,
                    help="seconds before a cached render is rebuilt")
     p.parse_args(namespace=OPTS)

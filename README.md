@@ -150,6 +150,7 @@ will ask for confirmation each time.
 | Purple swatch | away game (`at`) |
 | Record | regular-season W–L for the displayed season |
 | Month | dates in the current calendar month; rolls over on the 1st |
+| Layout | one centred column at 8 games or fewer, two columns above that |
 
 Playoff games appear automatically once ESPN publishes them, but are excluded
 from the record (that is the usual convention). Pass `--playoff-record` to
@@ -167,6 +168,7 @@ include them.
 --scrim 0..1           darkening behind the grid for legibility (default 0.34)
 --no-scores            bare W/L with no final score
 --playoff-record       count playoff games in the record
+--single-column-max N  one centred column at N games or fewer (default 8)
 --show-month           print the month name above the wordmark
 --wordmark PATH        use your own wordmark PNG
 --logo-width 0.235     wordmark size as a fraction of screen width

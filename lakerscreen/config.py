@@ -116,7 +116,7 @@ class Config:
     show_scores: bool = True
     record_includes_postseason: bool = False
     pad_odd_months: bool = True         # repeat the last game so rows stay paired
-    single_column_max: int = 0          # <= this many games render in one centred column
+    single_column_max: int = 8          # <= this many games render in one centred column
     scrim: float = 0.15                 # darkening behind the grid, 0..1
     month: Optional[str] = None         # "YYYY-MM" override; default = today
     show_month: bool = False            # print the month name above the wordmark

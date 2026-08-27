@@ -149,8 +149,9 @@ def _justify(c: _Canvas, runs: List[Run], target: float) -> List[Run]:
     return runs
 
 
-def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run]) -> None:
-    x = cx - _runs_width(runs) / 2.0
+def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run],
+               align: str = "center") -> None:
+    x = cx if align == "left" else cx - _runs_width(runs) / 2.0
     for i, r in enumerate(runs):
         if r["kind"] == "text":
             c.text((x, cy), r["text"], r["font"], r["fill"],
@@ -335,8 +336,10 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         th = h * lay.tag_h
         font = c.font(th * lay.tag_letter)
         tr_px = th * lay.tag_letter * lay.tag_tracking
-        tw = c.text_width(g.opponent, font, tr_px) + th * lay.tag_pad * 2
-        tx1 = x1 - w * lay.pad_x_ratio
+        # Uniform width, sized to the month's widest code, so the tags form a
+        # clean column instead of each hugging its own letters.
+        tw = tag_w if tag_w > 0 else c.text_width(g.opponent, font, tr_px) + th * lay.tag_pad * 2
+        tx1 = x1 - w * lay.tag_right_pad
         tcy = (y0 + y1) / 2.0
         c.rounded_rect((tx1 - tw, tcy - th / 2.0, tx1, tcy + th / 2.0),
                        th * lay.badge_radius,
@@ -377,19 +380,27 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                         x0 + inset * 1.6 + sw, y1 - inset * 2.2),
                        sw / 2.0, fill=pal.gold if g.is_home else pal.purple)
 
-    # Square the left pair off: both lines get the same width, so their left
-    # and right edges line up.
-    target = min(max(_runs_width(tl), _runs_width(bl)), lw)
-    _draw_runs(c, lcx, ya, _justify(c, list(tl), target))
-    _draw_runs(c, lcx, yb, _justify(c, list(bl), target))
+    if lay.justify_lines:
+        target = min(max(_runs_width(tl), _runs_width(bl)), lw)
+        _draw_runs(c, lcx, ya, _justify(c, list(tl), target))
+        _draw_runs(c, lcx, yb, _justify(c, list(bl), target))
+    else:
+        # Both lines start at the same x and keep their natural spacing.
+        # Stretching them to a common width made a short line like "2:00 PM"
+        # crawl with letter-spacing, and stretched by a different amount
+        # depending on whether the game had been played.
+        _draw_runs(c, x0 + lz0, ya, list(tl), align="left")
+        _draw_runs(c, x0 + lz0, yb, list(bl), align="left")
 
     if tr is None:
-        # Single element on the right: centre it across both lines.
         _draw_runs(c, rcx, (ya + yb) / 2.0, list(br))
-    else:
+    elif lay.justify_lines:
         target = min(max(_runs_width(tr), _runs_width(br)), rw)
         _draw_runs(c, rcx, ya, _justify(c, list(tr), target))
         _draw_runs(c, rcx, yb, _justify(c, list(br), target))
+    else:
+        _draw_runs(c, rcx, ya, list(tr))
+        _draw_runs(c, rcx, yb, list(br))
 
 
 def _draw_footer(c: _Canvas, size, month_key: str, record: Tuple[int, int],

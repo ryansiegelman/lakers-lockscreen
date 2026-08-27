@@ -177,83 +177,98 @@ def _fmt_time(g: Game) -> str:
     return g.start_local.strftime("%-I:%M %p").upper()
 
 
-def _draw_chip(c: _Canvas, box, g: Game, cfg: Config) -> None:
+def _chip_lines(c: _Canvas, g: Game, cfg: Config, w: float, h: float, scale: float = 1.0):
+    """The four lines of runs in a chip, built at a given type scale.
+
+    Type is sized from chip height, but the zones it has to fit in are sized
+    from chip width. When a month's chips are tall relative to their width the
+    two disagree, so the scale is solved once per month (see _type_scale) and
+    applied to every chip, keeping type identical across the grid.
+    """
+    lay, pal = cfg.layout, cfg.palette
+
+    top_left = [_text_run(c, _fmt_date(g), h * lay.date_size * scale, pal.text,
+                          tracking=h * lay.date_size * scale * lay.date_tracking)]
+
+    s = h * lay.time_size * scale
+    if g.completed and g.won is not None:
+        bs = h * lay.badge_size * scale
+        bot_left = [_badge_run(c, "W" if g.won else "L", bs, bs * lay.badge_radius,
+                               pal.badge_fill, pal.badge_text, bs * lay.badge_font,
+                               gap=s * lay.result_gap, fixed_gap=True)]
+        if cfg.show_scores and g.score_line:
+            bot_left.append(_text_run(c, g.score_line, s, pal.text, weight="light"))
+    elif g.state == "in":
+        bot_left = [_text_run(c, "LIVE", s, pal.live, tracking=s * 0.06,
+                              gap=s * lay.result_gap, fixed_gap=True)]
+        if g.team_score is not None and g.opp_score is not None:
+            bot_left.append(_text_run(c, "%d-%d" % (g.team_score, g.opp_score), s,
+                                      pal.text_dim, weight="light"))
+    else:
+        bot_left = [_text_run(c, _fmt_time(g), s, pal.text, weight="light")]
+
+    top_right = [_text_run(c, "vs" if g.is_home else "at", h * lay.vs_size * scale,
+                           pal.text, tracking=h * lay.vs_size * scale * lay.vs_tracking,
+                           gap=h * lay.dot_gap * scale),
+                 _swatch_run(h * lay.dot_w * scale, h * lay.dot_h * scale,
+                             pal.gold if g.is_home else pal.purple)]
+    bot_right = [_text_run(c, g.opponent, h * lay.team_size * scale, pal.text,
+                           tracking=h * lay.team_size * scale * lay.team_tracking,
+                           weight="light")]
+    return top_left, bot_left, top_right, bot_right
+
+
+def _zones(cfg: Config, w: float):
+    lay = cfg.layout
+    pad = w * lay.pad_x_ratio
+    half = w * lay.zone_gap / 2.0
+    lz0, lz1 = pad, w * lay.split - half
+    rz0, rz1 = w * lay.split + half, w - pad
+    return (lz0, lz1, rz0, rz1)
+
+
+def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Game]) -> float:
+    """Largest uniform type scale at which every chip still fits its zones."""
+    lz0, lz1, rz0, rz1 = _zones(cfg, w)
+    lw, rw = lz1 - lz0, rz1 - rz0
+    scale = 1.0
+    for g in games:
+        tl, bl, tr, br = _chip_lines(c, g, cfg, w, h, 1.0)
+        left = max(_runs_width(tl), _runs_width(bl))
+        right = max(_runs_width(tr), _runs_width(br))
+        if left > 0:
+            scale = min(scale, lw / left)
+        if right > 0:
+            scale = min(scale, rw / right)
+    return min(1.0, scale)
+
+
+def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> None:
     lay, pal = cfg.layout, cfg.palette
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
     radius = h * lay.corner_radius_ratio
     border = h * lay.border_ratio
 
-    # Offset twin behind the chip produces the stacked-sticker edge.
     dx, dy = h * lay.stack_dx, h * lay.stack_dy
     c.rounded_rect((x0 + dx, y0 + dy, x1 + dx, y1 + dy), radius,
                    fill=pal.chip_fill, outline=pal.chip_shadow, width=border)
     c.rounded_rect((x0, y0, x1, y1), radius,
                    fill=pal.chip_fill, outline=pal.chip_border, width=border)
 
-    pad = w * lay.pad_x_ratio
-    half_gap = w * lay.zone_gap / 2.0
-    lz0, lz1 = x0 + pad, x0 + w * lay.split - half_gap
-    rz0, rz1 = x0 + w * lay.split + half_gap, x1 - pad
-    lcx, rcx = (lz0 + lz1) / 2.0, (rz0 + rz1) / 2.0
+    lz0, lz1, rz0, rz1 = _zones(cfg, w)
+    lcx, rcx = x0 + (lz0 + lz1) / 2.0, x0 + (rz0 + rz1) / 2.0
     lw, rw = lz1 - lz0, rz1 - rz0
     ya, yb = y0 + h * lay.line1_y, y0 + h * lay.line2_y
-    floor = lay.min_shrink
 
-    # Left zone, top line: the date.
-    top_left = _fit(
-        lambda s: [_text_run(c, _fmt_date(g), s, pal.text, tracking=s * lay.date_tracking)],
-        h * lay.date_size, lw, floor)
-
-    # Left zone, bottom line: tip-off time before the game, result after it.
-    if g.completed and g.won is not None:
-        letter = "W" if g.won else "L"
-        score = g.score_line if cfg.show_scores else ""
-
-        def bottom(s: float) -> List[Run]:
-            # White rounded square with the letter knocked out in black.
-            bs = h * lay.badge_size
-            runs = [_badge_run(c, letter, bs, bs * lay.badge_radius,
-                               pal.badge_fill, pal.badge_text,
-                               bs * lay.badge_font,
-                               gap=s * lay.result_gap, fixed_gap=True)]
-            if score:
-                runs.append(_text_run(c, score, s, pal.text, weight="light"))
-            return runs
-    elif g.state == "in":
-        live = "%d-%d" % (g.team_score, g.opp_score) \
-            if g.team_score is not None and g.opp_score is not None else ""
-
-        def bottom(s: float) -> List[Run]:
-            runs = [_text_run(c, "LIVE", s, pal.live, tracking=s * 0.06, gap=s * 0.30)]
-            if live:
-                runs.append(_text_run(c, live, s * 0.95, pal.text_dim, weight="light"))
-            return runs
-    else:
-        def bottom(s: float) -> List[Run]:
-            return [_text_run(c, _fmt_time(g), s, pal.text, weight="light")]
-
-    bot_left = _fit(bottom, h * lay.time_size, lw, floor)
-
-    # Right zone: home/away marker over the opponent's code.
-    swatch = pal.gold if g.is_home else pal.purple
-    top_right = _fit(
-        lambda s: [_text_run(c, "vs" if g.is_home else "at", s, pal.text,
-                             tracking=s * lay.vs_tracking, gap=h * lay.dot_gap),
-                   _swatch_run(h * lay.dot_w, h * lay.dot_h, swatch)],
-        h * lay.vs_size, rw, floor)
-    bot_right = _fit(
-        lambda s: [_text_run(c, g.opponent, s, pal.text, tracking=s * lay.team_tracking,
-                             weight="light")],
-        h * lay.team_size, rw, floor)
+    tl, bl, tr, br = _chip_lines(c, g, cfg, w, h, scale)
 
     # Square each pair off: both lines in a zone get the same width, so their
     # left and right edges line up.
-    for pair, zone_w, cx in ((( top_left, bot_left), lw, lcx),
-                             ((top_right, bot_right), rw, rcx)):
-        target = min(max(_runs_width(pair[0]), _runs_width(pair[1])), zone_w)
-        _draw_runs(c, cx, ya, _justify(c, list(pair[0]), target))
-        _draw_runs(c, cx, yb, _justify(c, list(pair[1]), target))
+    for lines, zone_w, cx in ((( tl, bl), lw, lcx), ((tr, br), rw, rcx)):
+        target = min(max(_runs_width(lines[0]), _runs_width(lines[1])), zone_w)
+        _draw_runs(c, cx, ya, _justify(c, list(lines[0]), target))
+        _draw_runs(c, cx, yb, _justify(c, list(lines[1]), target))
 
 
 def _draw_footer(c: _Canvas, size, month_key: str, record: Tuple[int, int],
@@ -322,7 +337,8 @@ def build(cfg: Config, ttl: Optional[int] = None
         if fallback:
             month_key, shown = fallback, games_in_month(games, fallback)
 
-    if cfg.pad_odd_months and len(shown) % 2 == 1:
+    single = 0 < len(shown) <= cfg.single_column_max
+    if cfg.pad_odd_months and not single and len(shown) % 2 == 1:
         shown = shown + [shown[-1]]
 
     shown_season = shown[0].season if shown else season
@@ -333,21 +349,27 @@ def build(cfg: Config, ttl: Optional[int] = None
     c = _Canvas((W, H))
 
     if shown:
-        rows = int(math.ceil(len(shown) / 2.0))
+        cols = 1 if single else 2
+        rows = int(math.ceil(len(shown) / float(cols)))
         band_top, band_bottom = H * lay.grid_top, H * lay.grid_bottom
         band = band_bottom - band_top
         pitch = min(band / rows, H * lay.max_pitch)   # never stretch light months
         chip_h = min(pitch * lay.chip_height_ratio, H * lay.chip_max_height)
         start_y = band_top + (band - pitch * rows) / 2.0
 
-        col_w = W * (1 - 2 * lay.side_margin - lay.column_gutter) / 2.0
-        col_x = (W * lay.side_margin, W * lay.side_margin + col_w + W * lay.column_gutter)
+        if cols == 1:
+            col_w = W * lay.single_col_width
+            col_x = ((W - col_w) / 2.0,)
+        else:
+            col_w = W * (1 - 2 * lay.side_margin - lay.column_gutter) / 2.0
+            col_x = (W * lay.side_margin, W * lay.side_margin + col_w + W * lay.column_gutter)
 
+        scale = _type_scale(c, cfg, col_w, chip_h, shown)
         for i, g in enumerate(shown):
-            row, col = divmod(i, 2)               # row-major: L, R, L, R ...
+            row, col = divmod(i, cols)            # row-major: L, R, L, R ...
             x0 = col_x[col]
             y0 = start_y + row * pitch + (pitch - chip_h) / 2.0
-            _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg)
+            _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale)
 
     _draw_footer(c, (W, H), month_key, record, cfg, _wordmark(cfg, shown_season))
     return c.flatten_onto(base), month_key, shown, record

@@ -61,7 +61,8 @@ class Layout:
     side_margin: float = 0.0600         # fraction of width
     column_gutter: float = 0.0450       # fraction of width
     # Chip proportions.
-    max_pitch: float = 0.1050           # row-to-row spacing cap, of image height
+    max_pitch: float = 0.1050
+    single_col_width: float = 0.4600    # chip width in single-column mode, of image width           # row-to-row spacing cap, of image height
     chip_height_ratio: float = 0.8650    # of the per-row pitch
     chip_max_height: float = 0.0850     # of image height, caps chips in light months
     corner_radius_ratio: float = 0.30   # of chip height
@@ -69,9 +70,9 @@ class Layout:
     stack_dx: float = -0.025            # sticker-stack offset, of chip height
     stack_dy: float = 0.069
     # Chip interior. Contents sit in two zones, each centred on itself.
-    pad_x_ratio: float = 0.128          # of chip width
-    split: float = 0.592                # boundary between date zone and team zone
-    zone_gap: float = 0.184             # dead space at the boundary, of chip width
+    pad_x_ratio: float = 0.0800          # of chip width
+    split: float = 0.5600                # boundary between date zone and team zone
+    zone_gap: float = 0.0800             # dead space at the boundary, of chip width
     line1_y: float = 0.355              # vertical centres of the two text lines
     line2_y: float = 0.645
     date_size: float = 0.3350           # font sizes, of chip height
@@ -114,6 +115,7 @@ class Config:
     show_scores: bool = True
     record_includes_postseason: bool = False
     pad_odd_months: bool = True         # repeat the last game so rows stay paired
+    single_column_max: int = 0          # <= this many games render in one centred column
     scrim: float = 0.15                 # darkening behind the grid, 0..1
     month: Optional[str] = None         # "YYYY-MM" override; default = today
     show_month: bool = False            # print the month name above the wordmark

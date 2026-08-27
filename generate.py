@@ -32,6 +32,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--wordmark", help="PNG of your own wordmark instead of the ESPN-derived one")
     p.add_argument("--logo-width", type=float, default=None,
                    help="wordmark width as a fraction of screen width (default 0.235)")
+    p.add_argument("--single-column-max", type=int, default=0,
+                   help="months with at most this many games use one centred column")
     p.add_argument("--show-month", action="store_true", help="print the month name above the wordmark")
     p.add_argument("--playoff-record", action="store_true",
                    help="count playoff games in the record (default: regular season only)")
@@ -65,6 +67,7 @@ def main(argv=None) -> int:
         show_scores=not args.no_scores, scrim=args.scrim,
         month=args.month, wordmark_path=args.wordmark, show_month=args.show_month,
         record_includes_postseason=args.playoff_record,
+        single_column_max=args.single_column_max,
     )
     if args.logo_width:
         cfg.layout.wordmark_width = args.logo_width

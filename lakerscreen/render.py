@@ -170,6 +170,42 @@ def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run],
         x += float(r["w"]) + (float(r["gap"]) if i < len(runs) - 1 else 0.0)
 
 
+def _draw_runs_stretched(c: _Canvas, x: float, cy: float, runs: Sequence[Run],
+                         target: float) -> None:
+    """Draw a line widened to `target` by stretching the glyphs horizontally.
+
+    Widening with letter-spacing instead makes a short line like "7:00 PM"
+    crawl across the chip while a long one stays tight, which is exactly what
+    reads as broken when played and unplayed games sit side by side. Scaling
+    the drawn line keeps the spacing rhythm and just makes the letters wider.
+    """
+    natural = _runs_width(runs)
+    if natural <= 0:
+        return
+    factor = target / natural
+    if factor <= 1.02:
+        _draw_runs(c, x, cy, runs, align="left")
+        return
+
+    s = c.ss
+    sizes = [r["font"].size for r in runs if r["kind"] == "text"]
+    band = (max(sizes) if sizes else int(20 * s)) * 2.4
+    hpx = int(math.ceil(band))
+    wpx = int(math.ceil(natural * s)) + 2 * s
+
+    tmp = Image.new("RGBA", (max(1, wpx), max(1, hpx)), (0, 0, 0, 0))
+    keep_layer, keep_draw = c.layer, c.draw
+    c.layer, c.draw = tmp, ImageDraw.Draw(tmp)
+    try:
+        _draw_runs(c, float(s) / s, (hpx / 2.0) / s, runs, align="left")
+    finally:
+        c.layer, c.draw = keep_layer, keep_draw
+
+    tmp = tmp.resize((max(1, int(round(target * s)) + 2 * s), hpx), Image.LANCZOS)
+    keep_layer.alpha_composite(tmp, (int(round(x * s)) - s,
+                                     int(round(cy * s - hpx / 2.0))))
+
+
 def _fmt_date(g: Game):
     """Weekday and date as separate runs, so the gap between them is tunable
     rather than being whatever a space character happens to measure."""
@@ -382,8 +418,8 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
 
     if lay.justify_lines:
         target = min(max(_runs_width(tl), _runs_width(bl)), lw)
-        _draw_runs(c, lcx, ya, _justify(c, list(tl), target))
-        _draw_runs(c, lcx, yb, _justify(c, list(bl), target))
+        _draw_runs_stretched(c, x0 + lz0, ya, list(tl), target)
+        _draw_runs_stretched(c, x0 + lz0, yb, list(bl), target)
     else:
         # Both lines start at the same x and keep their natural spacing.
         # Stretching them to a common width made a short line like "2:00 PM"

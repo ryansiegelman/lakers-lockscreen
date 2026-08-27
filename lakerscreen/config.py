@@ -92,7 +92,7 @@ class Layout:
     tag_tracking: float = 0.120
     tag_gap: float = 0.0450             # space between text block and tag, of chip width
     tag_right_pad: float = 0.1100       # tag inset from the chip's right edge
-    justify_lines: bool = False         # stretch both lines to a shared width
+    justify_lines: bool = True         # stretch both lines to a shared width
     tag_outline: float = 0.000          # white keyline around the tag, of tag height
     tag_text_stroke: float = 0.032      # black keyline on the letters, of letter size
     tag_fill_accent: bool = True        # gold/purple tag + white letters,
@@ -101,14 +101,14 @@ class Layout:
     line1_y: float = 0.355              # vertical centres of the two text lines
     line2_y: float = 0.645
     date_size: float = 0.3350           # font sizes, of chip height
-    time_size: float = 0.2400
+    time_size: float = 0.2900
     vs_size: float = 0.2650
-    team_size: float = 0.2400
+    team_size: float = 0.2900
     dot_w: float = 0.085                # home/away swatch, of chip height
     dot_h: float = 0.058
     dot_gap: float = 0.170              # space between vs/at and the swatch
-    date_tracking: float = 0.0250
-    date_gap: float = 0.3800           # space between weekday and date, of font size        # letter-spacing, as a fraction of font size
+    date_tracking: float = 0.0000
+    date_gap: float = 0.1000           # space between weekday and date, of font size        # letter-spacing, as a fraction of font size
     vs_tracking: float = 0.250
     team_tracking: float = 0.2600
     badge_size: float = 0.1350           # W/L badge square, of chip height

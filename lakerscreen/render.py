@@ -173,7 +173,7 @@ def _draw_runs(c: _Canvas, cx: float, cy: float, runs: Sequence[Run],
 def _fmt_date(g: Game):
     """Weekday and date as separate runs, so the gap between them is tunable
     rather than being whatever a space character happens to measure."""
-    return (g.start_local.strftime("%a").upper(),
+    return (g.start_local.strftime("%a").upper() + ",",
             g.start_local.strftime("%-m/%-d"))
 
 
@@ -240,15 +240,38 @@ def _chip_lines(c: _Canvas, g: Game, cfg: Config, w: float, h: float, scale: flo
     return top_left, bot_left, top_right, team(pal.text)
 
 
-def _tag_width(c: _Canvas, cfg: Config, h: float, games: Sequence[Game]) -> float:
-    """Width of the widest team tag this month, so the text block can run
-    right up to it instead of stopping at a guessed fraction."""
+def _tag_metrics(c: _Canvas, cfg: Config, h: float, games: Sequence[Game]):
+    """(width, height, letter size) for this month's team tags.
+
+    Sized once for the month so every tag is identical and they form a column.
+    A circle is a fixed diameter with the code scaled to fit inside it; a pill
+    grows to whatever the widest code needs.
+    """
     lay = cfg.layout
+    if cfg.marker != "tag":
+        return 0.0, 0.0, 0.0
+
+    if lay.tag_shape == "circle":
+        d = h * lay.tag_circle
+        size = d * lay.tag_letter
+        font = c.font(size)
+        tr = size * lay.tag_tracking
+        widest = max((c.text_width(g.opponent, font, tr) for g in games), default=0.0)
+        room = d * lay.tag_fit
+        if widest > room > 0:
+            size *= room / widest          # shrink the code to sit inside the circle
+        return d, d, size
+
     th = h * lay.tag_h
-    font = c.font(th * lay.tag_letter)
-    tr = th * lay.tag_letter * lay.tag_tracking
+    size = th * lay.tag_letter
+    font = c.font(size)
+    tr = size * lay.tag_tracking
     widest = max((c.text_width(g.opponent, font, tr) for g in games), default=0.0)
-    return widest + th * lay.tag_pad * 2.0
+    return widest + th * lay.tag_pad * 2.0, th, size
+
+
+def _tag_width(c: _Canvas, cfg: Config, h: float, games: Sequence[Game]) -> float:
+    return _tag_metrics(c, cfg, h, games)[0]
 
 
 def _zones(cfg: Config, w: float, tag_w: float = 0.0):
@@ -322,7 +345,8 @@ def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Gam
 
 
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
-               tag_w: float = 0.0, line_target: float = 0.0) -> None:
+               tag_w: float = 0.0, line_target: float = 0.0,
+               tag_h: float = 0.0, tag_letter: float = 0.0) -> None:
     lay, pal = cfg.layout, cfg.palette
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
@@ -348,16 +372,15 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
 
     if cfg.marker == "tag":
         accent = pal.gold if g.is_home else pal.purple
-        th = h * lay.tag_h
-        font = c.font(th * lay.tag_letter)
-        tr_px = th * lay.tag_letter * lay.tag_tracking
-        # Uniform width, sized to the month's widest code, so the tags form a
-        # clean column instead of each hugging its own letters.
+        th = tag_h or h * lay.tag_h
+        lsz = tag_letter or th * lay.tag_letter
+        font = c.font(lsz)
+        tr_px = lsz * lay.tag_tracking
         tw = tag_w if tag_w > 0 else c.text_width(g.opponent, font, tr_px) + th * lay.tag_pad * 2
         tx1 = _tag_x1 if _tag_x1 is not None else x1 - w * lay.tag_right_pad
         tcy = (y0 + y1) / 2.0
         c.rounded_rect((tx1 - tw, tcy - th / 2.0, tx1, tcy + th / 2.0),
-                       th * lay.tag_radius,
+                       th * (0.5 if lay.tag_shape == "circle" else lay.tag_radius),
                        fill=accent if lay.tag_fill_accent else pal.badge_fill,
                        outline=pal.chip_border if lay.tag_outline > 0 else None,
                        width=th * lay.tag_outline)
@@ -519,7 +542,7 @@ def build(cfg: Config, ttl: Optional[int] = None
             col_w = W * (1 - 2 * lay.side_margin - lay.column_gutter) / 2.0
             col_x = (W * lay.side_margin, W * lay.side_margin + col_w + W * lay.column_gutter)
 
-        tag_w = _tag_width(c, cfg, chip_h, shown) if cfg.marker == "tag" else 0.0
+        tag_w, tag_h_px, tag_letter_px = _tag_metrics(c, cfg, chip_h, shown)
         scale = _type_scale(c, cfg, col_w, chip_h, shown, tag_w)
         line_target = _line_target(c, cfg, col_w, chip_h, shown, scale, tag_w)
         for i, g in enumerate(shown):
@@ -527,7 +550,7 @@ def build(cfg: Config, ttl: Optional[int] = None
             x0 = col_x[col]
             y0 = start_y + row * pitch + (pitch - chip_h) / 2.0
             _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale,
-                       tag_w, line_target)
+                       tag_w, line_target, tag_h_px, tag_letter_px)
 
     _draw_footer(c, (W, H), month_key, record, cfg, _wordmark(cfg, shown_season))
     return c.flatten_onto(base), month_key, shown, record

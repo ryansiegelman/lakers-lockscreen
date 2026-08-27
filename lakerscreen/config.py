@@ -91,6 +91,9 @@ class Layout:
     tag_letter: float = 0.4800           # letter size, of tag height
     tag_tracking: float = 0.060
     tag_radius: float = 0.500          # tag corner radius, of tag height
+    tag_shape: str = "circle"          # circle | pill
+    tag_circle: float = 0.460          # circle diameter, of chip height
+    tag_fit: float = 0.700             # share of the diameter the code may span
     tag_gap: float = 0.0450             # space between text block and tag, of chip width
     tag_right_pad: float = 0.0650       # tag inset from the chip's right edge
     justify_lines: bool = True         # stretch both lines to a shared width

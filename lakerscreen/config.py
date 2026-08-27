@@ -90,9 +90,9 @@ class Layout:
     tag_pad: float = 0.3000              # horizontal padding inside, of tag height
     tag_letter: float = 0.6000           # letter size, of tag height
     tag_tracking: float = 0.120
-    tag_zone_end: float = 0.7200        # where the text block ends in tag mode
-    tag_outline: float = 0.090          # white keyline around the tag, of tag height
-    tag_text_stroke: float = 0.075      # black keyline on the letters, of letter size
+    tag_gap: float = 0.0450             # space between text block and tag, of chip width
+    tag_outline: float = 0.045          # white keyline around the tag, of tag height
+    tag_text_stroke: float = 0.032      # black keyline on the letters, of letter size
     tag_fill_accent: bool = True        # gold/purple tag + white letters,
                                         # else white tag + dark letters                # boundary between date zone and team zone
     zone_gap: float = 0.0550             # dead space at the boundary, of chip width
@@ -113,6 +113,8 @@ class Layout:
     badge_radius: float = 0.300         # corner radius, of badge size
     badge_font: float = 0.720           # letter size inside the badge, of badge size
     result_gap: float = 0.45            # space between the W/L badge and the score
+    chip_vpad: float = 0.115            # inner top/bottom margin, of chip height
+    line_min_gap: float = 0.055         # minimum ink gap between the two lines
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.
     grid_bottom_pad: float = 0.0

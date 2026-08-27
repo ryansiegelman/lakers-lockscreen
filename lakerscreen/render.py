@@ -239,13 +239,24 @@ def _chip_lines(c: _Canvas, g: Game, cfg: Config, w: float, h: float, scale: flo
     return top_left, bot_left, top_right, team(pal.text)
 
 
-def _zones(cfg: Config, w: float):
+def _tag_width(c: _Canvas, cfg: Config, h: float, games: Sequence[Game]) -> float:
+    """Width of the widest team tag this month, so the text block can run
+    right up to it instead of stopping at a guessed fraction."""
+    lay = cfg.layout
+    th = h * lay.tag_h
+    font = c.font(th * lay.tag_letter)
+    tr = th * lay.tag_letter * lay.tag_tracking
+    widest = max((c.text_width(g.opponent, font, tr) for g in games), default=0.0)
+    return widest + th * lay.tag_pad * 2.0
+
+
+def _zones(cfg: Config, w: float, tag_w: float = 0.0):
     lay = cfg.layout
     pad = w * lay.pad_x_ratio
     half = w * lay.zone_gap / 2.0
     if cfg.marker == "tag":
-        # Reserve a slice for the tag; the text block takes everything else.
-        return (pad, w * lay.tag_zone_end, w - pad, w - pad)
+        # Text block runs from the padding to just short of the tag.
+        return (pad, w - pad - tag_w - w * lay.tag_gap, w - pad, w - pad)
     if cfg.marker == "pill":
         # One text block; the pill occupies the right edge and is drawn directly.
         pill = w * lay.pill_w + w * lay.pill_gap
@@ -257,11 +268,33 @@ def _zones(cfg: Config, w: float):
     return (lz0, lz1, rz0, rz1)
 
 
-def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Game]) -> float:
-    """Largest uniform type scale at which every chip still fits its zones."""
-    lz0, lz1, rz0, rz1 = _zones(cfg, w)
+def _vertical_scale(c: _Canvas, cfg: Config, h: float) -> float:
+    """Largest type scale the chip's height allows before the two lines
+    collide with each other or with the chip's top and bottom edges."""
+    lay = cfg.layout
+    cap = lambda f, txt: (f.getbbox(txt)[3] - f.getbbox(txt)[1]) / float(c.ss)
+    cap_d = cap(c.font(h * lay.date_size), "SUN")
+    cap_s = cap(c.font(h * lay.time_size, "light"), "128")
+    if cap_d <= 0 or cap_s <= 0:
+        return 1.0
+    limits = [
+        (lay.line1_y - lay.chip_vpad) * h / (cap_d / 2.0),
+        ((1.0 - lay.chip_vpad) - lay.line2_y) * h / (cap_s / 2.0),
+        ((lay.line2_y - lay.line1_y) - lay.line_min_gap) * h / (cap_d / 2.0 + cap_s / 2.0),
+    ]
+    return max(0.2, min(limits))
+
+
+def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Game],
+                tag_w: float = 0.0) -> float:
+    """Largest uniform type scale that fits both the zone widths and the chip
+    height. Deliberately allowed above 1.0: without that the glyphs stay at
+    their nominal size and any spare width is absorbed as letter-spacing
+    instead, which reads as loose text rather than big text.
+    """
+    lz0, lz1, rz0, rz1 = _zones(cfg, w, tag_w)
     lw, rw = lz1 - lz0, rz1 - rz0
-    scale = 1.0
+    scale = _vertical_scale(c, cfg, h)
     for g in games:
         tl, bl, tr, br = _chip_lines(c, g, cfg, w, h, 1.0)
         left = max(_runs_width(tl), _runs_width(bl))
@@ -270,10 +303,11 @@ def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Gam
             scale = min(scale, lw / left)
         if right > 0:
             scale = min(scale, rw / right)
-    return min(1.0, scale)
+    return scale
 
 
-def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> None:
+def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
+               tag_w: float = 0.0) -> None:
     lay, pal = cfg.layout, cfg.palette
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
@@ -289,7 +323,7 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> Non
     else:
         c.rounded_rect((x0, y0, x1, y1), radius, fill=pal.chip_fill)
 
-    lz0, lz1, rz0, rz1 = _zones(cfg, w)
+    lz0, lz1, rz0, rz1 = _zones(cfg, w, tag_w)
     lcx, rcx = x0 + (lz0 + lz1) / 2.0, x0 + (rz0 + rz1) / 2.0
     lw, rw = lz1 - lz0, rz1 - rz0
     ya, yb = y0 + h * lay.line1_y, y0 + h * lay.line2_y
@@ -456,12 +490,13 @@ def build(cfg: Config, ttl: Optional[int] = None
             col_w = W * (1 - 2 * lay.side_margin - lay.column_gutter) / 2.0
             col_x = (W * lay.side_margin, W * lay.side_margin + col_w + W * lay.column_gutter)
 
-        scale = _type_scale(c, cfg, col_w, chip_h, shown)
+        tag_w = _tag_width(c, cfg, chip_h, shown) if cfg.marker == "tag" else 0.0
+        scale = _type_scale(c, cfg, col_w, chip_h, shown, tag_w)
         for i, g in enumerate(shown):
             row, col = divmod(i, cols)            # row-major: L, R, L, R ...
             x0 = col_x[col]
             y0 = start_y + row * pitch + (pitch - chip_h) / 2.0
-            _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale)
+            _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale, tag_w)
 
     _draw_footer(c, (W, H), month_key, record, cfg, _wordmark(cfg, shown_season))
     return c.flatten_onto(base), month_key, shown, record

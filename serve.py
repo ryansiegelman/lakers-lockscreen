@@ -112,7 +112,7 @@ def main() -> int:
     p.add_argument("--team", default="lal")
     p.add_argument("--bg")
     p.add_argument("--bg-align", default="center", choices=("top", "center", "bottom"))
-    p.add_argument("--scrim", type=float, default=0.34)
+    p.add_argument("--scrim", type=float, default=0.15)
     p.add_argument("--no-scores", action="store_true")
     p.add_argument("--wordmark")
     p.add_argument("--show-month", action="store_true")

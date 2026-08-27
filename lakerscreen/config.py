@@ -114,7 +114,7 @@ class Config:
     show_scores: bool = True
     record_includes_postseason: bool = False
     pad_odd_months: bool = True         # repeat the last game so rows stay paired
-    scrim: float = 0.34                 # darkening behind the grid, 0..1
+    scrim: float = 0.15                 # darkening behind the grid, 0..1
     month: Optional[str] = None         # "YYYY-MM" override; default = today
     show_month: bool = False            # print the month name above the wordmark
     palette: Palette = field(default_factory=Palette)

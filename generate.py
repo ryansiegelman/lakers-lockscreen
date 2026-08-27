@@ -25,7 +25,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--bg", help="background photo (cover-cropped); default is synthetic water")
     p.add_argument("--bg-align", default="center", choices=("top", "center", "bottom"),
                    help="which part of a landscape photo to keep when cropping to portrait")
-    p.add_argument("--scrim", type=float, default=0.34,
+    p.add_argument("--scrim", type=float, default=0.15,
                    help="0-1 darkening behind the grid for legibility")
     p.add_argument("--no-scores", action="store_true",
                    help="show a bare W/L instead of W plus the final score")

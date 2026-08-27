@@ -35,8 +35,8 @@ RGBA = Tuple[int, int, int, int]
 
 @dataclass
 class Palette:
-    gold: RGBA = (253, 185, 39, 255)          # home / "vs"
-    purple: RGBA = (142, 94, 219, 255)        # away / "at" (brightened for dark bg)
+    gold: RGBA = (253, 185, 39, 255)          # #FDB927, official Lakers gold
+    purple: RGBA = (85, 37, 131, 255)         # #552583, official Lakers purple
     chip_fill: RGBA = (8, 8, 10, 236)
     chip_border: RGBA = (255, 255, 255, 255)
     chip_shadow: RGBA = (255, 255, 255, 150)  # the offset "sticker stack" edge
@@ -83,7 +83,15 @@ class Layout:
     pill_leading: float = 0.860         # line spacing, of letter size
     pill_text_mode: str = "auto"        # auto | dark | light; auto = dark on gold,
                                         # white on purple, for best contrast either way
-    pill_text_boost: float = 1.45       # date/time enlargement in pill mode                # boundary between date zone and team zone
+    pill_text_boost: float = 1.45       # date/time enlargement in pill mode
+    # "tag" marker: team code in a rounded rectangle built to the same corner
+    # proportions as the W/L badge, so the two read as one shape language.
+    tag_h: float = 0.290                # tag height, of chip height
+    tag_pad: float = 0.360              # horizontal padding inside, of tag height
+    tag_letter: float = 0.560           # letter size, of tag height
+    tag_tracking: float = 0.120
+    tag_fill_accent: bool = True        # gold/purple tag + white letters,
+                                        # else white tag + dark letters                # boundary between date zone and team zone
     zone_gap: float = 0.0550             # dead space at the boundary, of chip width
     line1_y: float = 0.355              # vertical centres of the two text lines
     line2_y: float = 0.645
@@ -120,7 +128,7 @@ class Config:
     device: str = DEFAULT_DEVICE
     size: Optional[Tuple[int, int]] = None
     timezone: str = "America/Los_Angeles"
-    marker: str = "vs"                  # vs | tint | dot | stripe | pill
+    marker: str = "vs"                  # vs | tint | dot | stripe | pill | tag
     team: str = "lal"
     team_color: str = "552583"       # hex used to key the wordmark out of the logo
     wordmark_path: Optional[str] = None  # override with your own PNG

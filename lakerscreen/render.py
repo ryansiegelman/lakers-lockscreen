@@ -215,7 +215,7 @@ def _chip_lines(c: _Canvas, g: Game, cfg: Config, w: float, h: float, scale: flo
         bot_left = [_text_run(c, _fmt_time(g), s, pal.text, weight="light")]
 
     accent = pal.gold if g.is_home else pal.purple
-    if cfg.marker == "pill":
+    if cfg.marker in ("pill", "tag"):
         return top_left, bot_left, None, []
     ts = h * lay.team_size * scale
     team = lambda fill: [_text_run(c, g.opponent, ts, fill,
@@ -243,6 +243,9 @@ def _zones(cfg: Config, w: float):
     lay = cfg.layout
     pad = w * lay.pad_x_ratio
     half = w * lay.zone_gap / 2.0
+    if cfg.marker == "tag":
+        # Reserve a fixed slice for the tag; the text block gets the rest.
+        return (pad, w * 0.640, w - pad, w - pad)
     if cfg.marker == "pill":
         # One text block; the pill occupies the right edge and is drawn directly.
         pill = w * lay.pill_w + w * lay.pill_gap
@@ -277,11 +280,14 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> Non
     radius = h * lay.corner_radius_ratio
     border = h * lay.border_ratio
 
-    dx, dy = h * lay.stack_dx, h * lay.stack_dy
-    c.rounded_rect((x0 + dx, y0 + dy, x1 + dx, y1 + dy), radius,
-                   fill=pal.chip_fill, outline=pal.chip_shadow, width=border)
-    c.rounded_rect((x0, y0, x1, y1), radius,
-                   fill=pal.chip_fill, outline=pal.chip_border, width=border)
+    if lay.border_ratio > 0:
+        dx, dy = h * lay.stack_dx, h * lay.stack_dy
+        c.rounded_rect((x0 + dx, y0 + dy, x1 + dx, y1 + dy), radius,
+                       fill=pal.chip_fill, outline=pal.chip_shadow, width=border)
+        c.rounded_rect((x0, y0, x1, y1), radius,
+                       fill=pal.chip_fill, outline=pal.chip_border, width=border)
+    else:
+        c.rounded_rect((x0, y0, x1, y1), radius, fill=pal.chip_fill)
 
     lz0, lz1, rz0, rz1 = _zones(cfg, w)
     lcx, rcx = x0 + (lz0 + lz1) / 2.0, x0 + (rz0 + rz1) / 2.0
@@ -289,6 +295,21 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> Non
     ya, yb = y0 + h * lay.line1_y, y0 + h * lay.line2_y
 
     tl, bl, tr, br = _chip_lines(c, g, cfg, w, h, scale)
+
+    if cfg.marker == "tag":
+        accent = pal.gold if g.is_home else pal.purple
+        th = h * lay.tag_h
+        font = c.font(th * lay.tag_letter)
+        tr_px = th * lay.tag_letter * lay.tag_tracking
+        tw = c.text_width(g.opponent, font, tr_px) + th * lay.tag_pad * 2
+        tx1 = x1 - w * lay.pad_x_ratio
+        tcy = (y0 + y1) / 2.0
+        c.rounded_rect((tx1 - tw, tcy - th / 2.0, tx1, tcy + th / 2.0),
+                       th * lay.badge_radius,
+                       fill=accent if lay.tag_fill_accent else pal.badge_fill)
+        c.text((tx1 - tw / 2.0, tcy), g.opponent, font,
+               pal.text if lay.tag_fill_accent else pal.badge_text,
+               tracking=tr_px, anchor="mc")
 
     if cfg.marker == "pill":
         pw = w * lay.pill_w

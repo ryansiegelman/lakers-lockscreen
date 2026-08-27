@@ -65,12 +65,12 @@ class Layout:
     single_col_width: float = 0.4600    # chip width in single-column mode, of image width
     chip_height_ratio: float = 0.815    # of the per-row pitch
     chip_max_height: float = 0.0610     # of image height, caps chips in light months
-    corner_radius_ratio: float = 0.30   # of chip height
-    border_ratio: float = 0.063         # of chip height
+    corner_radius_ratio: float = 0.3200   # of chip height
+    border_ratio: float = 0.0300         # of chip height
     stack_dx: float = -0.025            # sticker-stack offset, of chip height
     stack_dy: float = 0.069
     # Chip interior. Contents sit in two zones, each centred on itself.
-    pad_x_ratio: float = 0.0650          # of chip width
+    pad_x_ratio: float = 0.0950          # of chip width
     split: float = 0.6400
     split_compact: float = 0.7300       # split when the marker needs less room
     stripe_w: float = 0.075             # home/away edge stripe, of chip width
@@ -86,10 +86,13 @@ class Layout:
     pill_text_boost: float = 1.45       # date/time enlargement in pill mode
     # "tag" marker: team code in a rounded rectangle built to the same corner
     # proportions as the W/L badge, so the two read as one shape language.
-    tag_h: float = 0.290                # tag height, of chip height
-    tag_pad: float = 0.360              # horizontal padding inside, of tag height
-    tag_letter: float = 0.560           # letter size, of tag height
+    tag_h: float = 0.2500                # tag height, of chip height
+    tag_pad: float = 0.3000              # horizontal padding inside, of tag height
+    tag_letter: float = 0.6000           # letter size, of tag height
     tag_tracking: float = 0.120
+    tag_zone_end: float = 0.7200        # where the text block ends in tag mode
+    tag_outline: float = 0.090          # white keyline around the tag, of tag height
+    tag_text_stroke: float = 0.075      # black keyline on the letters, of letter size
     tag_fill_accent: bool = True        # gold/purple tag + white letters,
                                         # else white tag + dark letters                # boundary between date zone and team zone
     zone_gap: float = 0.0550             # dead space at the boundary, of chip width
@@ -103,10 +106,10 @@ class Layout:
     dot_h: float = 0.058
     dot_gap: float = 0.170              # space between vs/at and the swatch
     date_tracking: float = 0.0250
-    date_gap: float = 0.4200           # space between weekday and date, of font size        # letter-spacing, as a fraction of font size
+    date_gap: float = 0.3800           # space between weekday and date, of font size        # letter-spacing, as a fraction of font size
     vs_tracking: float = 0.250
     team_tracking: float = 0.2600
-    badge_size: float = 0.1850           # W/L badge square, of chip height
+    badge_size: float = 0.1350           # W/L badge square, of chip height
     badge_radius: float = 0.300         # corner radius, of badge size
     badge_font: float = 0.720           # letter size inside the badge, of badge size
     result_gap: float = 0.45            # space between the W/L badge and the score
@@ -128,7 +131,7 @@ class Config:
     device: str = DEFAULT_DEVICE
     size: Optional[Tuple[int, int]] = None
     timezone: str = "America/Los_Angeles"
-    marker: str = "vs"                  # vs | tint | dot | stripe | pill | tag
+    marker: str = "tag"                  # vs | tint | dot | stripe | pill | tag
     team: str = "lal"
     team_color: str = "552583"       # hex used to key the wordmark out of the logo
     wordmark_path: Optional[str] = None  # override with your own PNG

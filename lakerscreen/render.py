@@ -244,8 +244,8 @@ def _zones(cfg: Config, w: float):
     pad = w * lay.pad_x_ratio
     half = w * lay.zone_gap / 2.0
     if cfg.marker == "tag":
-        # Reserve a fixed slice for the tag; the text block gets the rest.
-        return (pad, w * 0.640, w - pad, w - pad)
+        # Reserve a slice for the tag; the text block takes everything else.
+        return (pad, w * lay.tag_zone_end, w - pad, w - pad)
     if cfg.marker == "pill":
         # One text block; the pill occupies the right edge and is drawn directly.
         pill = w * lay.pill_w + w * lay.pill_gap
@@ -306,10 +306,14 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> Non
         tcy = (y0 + y1) / 2.0
         c.rounded_rect((tx1 - tw, tcy - th / 2.0, tx1, tcy + th / 2.0),
                        th * lay.badge_radius,
-                       fill=accent if lay.tag_fill_accent else pal.badge_fill)
+                       fill=accent if lay.tag_fill_accent else pal.badge_fill,
+                       outline=pal.chip_border if lay.tag_outline > 0 else None,
+                       width=th * lay.tag_outline)
         c.text((tx1 - tw / 2.0, tcy), g.opponent, font,
                pal.text if lay.tag_fill_accent else pal.badge_text,
-               tracking=tr_px, anchor="mc")
+               tracking=tr_px, anchor="mc",
+               stroke_width=th * lay.tag_letter * lay.tag_text_stroke,
+               stroke_fill=pal.badge_text)
 
     if cfg.marker == "pill":
         pw = w * lay.pill_w

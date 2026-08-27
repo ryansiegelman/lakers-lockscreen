@@ -419,10 +419,11 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                        sw / 2.0, fill=pal.gold if g.is_home else pal.purple)
 
     if lay.justify_lines:
-        # Both lines start at the chip's left padding and stretch across the
-        # full zone to the tag, so every chip's text spans the same span and
-        # the left edges form a column.
-        target = lw
+        # Both lines start at the chip's left padding and are set to their own
+        # shared natural width - the wider of the two. Stretching them to the
+        # full zone instead meant the shorter line more than doubled, so most
+        # of its width was empty letter-gaps.
+        target = min(max(_runs_width(tl), _runs_width(bl)), lw)
         _draw_runs(c, x0 + lz0, ya, _justify(c, list(tl), target), align="left")
         _draw_runs(c, x0 + lz0, yb, _justify(c, list(bl), target), align="left")
     else:

@@ -55,15 +55,15 @@ class Layout:
     """
     # Vertical band the two-column grid may occupy (below clock, above footer).
     # Every value below was measured off the reference lock screen at 1206x2622.
-    grid_top: float = 0.2796
-    grid_bottom: float = 0.8520
+    grid_top: float = 0.2700
+    grid_bottom: float = 0.8700
     # Horizontal geometry.
-    side_margin: float = 0.1202         # fraction of width
-    column_gutter: float = 0.0730       # fraction of width
+    side_margin: float = 0.0600         # fraction of width
+    column_gutter: float = 0.0450       # fraction of width
     # Chip proportions.
-    max_pitch: float = 0.0744           # row-to-row spacing cap, of image height
-    chip_height_ratio: float = 0.815    # of the per-row pitch
-    chip_max_height: float = 0.0610     # of image height, caps chips in light months
+    max_pitch: float = 0.1050           # row-to-row spacing cap, of image height
+    chip_height_ratio: float = 0.8650    # of the per-row pitch
+    chip_max_height: float = 0.0850     # of image height, caps chips in light months
     corner_radius_ratio: float = 0.30   # of chip height
     border_ratio: float = 0.063         # of chip height
     stack_dx: float = -0.025            # sticker-stack offset, of chip height
@@ -74,17 +74,17 @@ class Layout:
     zone_gap: float = 0.184             # dead space at the boundary, of chip width
     line1_y: float = 0.355              # vertical centres of the two text lines
     line2_y: float = 0.645
-    date_size: float = 0.2800           # font sizes, of chip height
-    time_size: float = 0.2000
-    vs_size: float = 0.2216
-    team_size: float = 0.2000
+    date_size: float = 0.3350           # font sizes, of chip height
+    time_size: float = 0.2400
+    vs_size: float = 0.2650
+    team_size: float = 0.2400
     dot_w: float = 0.085                # home/away swatch, of chip height
     dot_h: float = 0.058
     dot_gap: float = 0.170              # space between vs/at and the swatch
     date_tracking: float = 0.050        # letter-spacing, as a fraction of font size
     vs_tracking: float = 0.250
     team_tracking: float = 0.344
-    badge_size: float = 0.155           # W/L badge square, of chip height
+    badge_size: float = 0.1850           # W/L badge square, of chip height
     badge_radius: float = 0.300         # corner radius, of badge size
     badge_font: float = 0.720           # letter size inside the badge, of badge size
     result_gap: float = 0.45            # space between the W/L badge and the score

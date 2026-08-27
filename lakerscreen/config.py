@@ -86,7 +86,6 @@ class Layout:
     team_tracking: float = 0.344
     result_size: float = 0.480          # W/L size relative to the score
     result_gap: float = 0.45            # space between the W/L badge and the score
-    result_indent: float = 0.120        # inset of the result line's left edge, of zone width
     result_stroke: float = 0.060        # W/L outline weight, of its font size
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.

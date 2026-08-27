@@ -70,7 +70,7 @@ class Layout:
     stack_dx: float = -0.025            # sticker-stack offset, of chip height
     stack_dy: float = 0.069
     # Chip interior. Contents sit in two zones, each centred on itself.
-    pad_x_ratio: float = 0.0850          # of chip width
+    pad_x_ratio: float = 0.1000          # of chip width
     split: float = 0.6400
     split_compact: float = 0.7300       # split when the marker needs less room
     stripe_w: float = 0.075             # home/away edge stripe, of chip width

@@ -22,6 +22,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("-m", "--month", help="YYYY-MM to render (default: current month)")
     p.add_argument("--tz", default="America/Los_Angeles", help="timezone for tip-off times")
     p.add_argument("--team", default="lal", help="ESPN team slug")
+    p.add_argument("--marker", default="vs", choices=("vs", "tint", "dot", "stripe"),
+                   help="how home/away is shown")
     p.add_argument("--bg", help="background photo (cover-cropped); default is synthetic water")
     p.add_argument("--bg-align", default="center", choices=("top", "center", "bottom"),
                    help="which part of a landscape photo to keep when cropping to portrait")
@@ -65,7 +67,7 @@ def main(argv=None) -> int:
         device=args.device, size=size, timezone=args.tz, team=args.team,
         background=args.bg, background_align=args.bg_align,
         show_scores=not args.no_scores, scrim=args.scrim,
-        month=args.month, wordmark_path=args.wordmark, show_month=args.show_month,
+        month=args.month, marker=args.marker, wordmark_path=args.wordmark, show_month=args.show_month,
         record_includes_postseason=args.playoff_record,
         single_column_max=args.single_column_max,
     )

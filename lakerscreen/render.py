@@ -213,23 +213,37 @@ def _chip_lines(c: _Canvas, g: Game, cfg: Config, w: float, h: float, scale: flo
     else:
         bot_left = [_text_run(c, _fmt_time(g), s, pal.text, weight="light")]
 
+    accent = pal.gold if g.is_home else pal.purple
+    ts = h * lay.team_size * scale
+    team = lambda fill: [_text_run(c, g.opponent, ts, fill,
+                                   tracking=ts * lay.team_tracking, weight="light")]
+
+    if cfg.marker == "tint":
+        # Colour carries home/away on its own; no word, no swatch.
+        return top_left, bot_left, None, team(accent)
+    if cfg.marker == "stripe":
+        # Home/away moves to a stripe on the chip edge.
+        return top_left, bot_left, None, team(pal.text)
+    if cfg.marker == "dot":
+        return (top_left, bot_left,
+                [_swatch_run(h * lay.dot_w * scale, h * lay.dot_h * scale, accent)],
+                team(pal.text))
+
     top_right = [_text_run(c, "vs" if g.is_home else "at", h * lay.vs_size * scale,
                            pal.text, tracking=h * lay.vs_size * scale * lay.vs_tracking,
                            gap=h * lay.dot_gap * scale),
-                 _swatch_run(h * lay.dot_w * scale, h * lay.dot_h * scale,
-                             pal.gold if g.is_home else pal.purple)]
-    bot_right = [_text_run(c, g.opponent, h * lay.team_size * scale, pal.text,
-                           tracking=h * lay.team_size * scale * lay.team_tracking,
-                           weight="light")]
-    return top_left, bot_left, top_right, bot_right
+                 _swatch_run(h * lay.dot_w * scale, h * lay.dot_h * scale, accent)]
+    return top_left, bot_left, top_right, team(pal.text)
 
 
 def _zones(cfg: Config, w: float):
     lay = cfg.layout
     pad = w * lay.pad_x_ratio
     half = w * lay.zone_gap / 2.0
-    lz0, lz1 = pad, w * lay.split - half
-    rz0, rz1 = w * lay.split + half, w - pad
+    split = lay.split if cfg.marker == "vs" else lay.split_compact
+    lz0 = pad + (w * lay.stripe_w * 1.6 if cfg.marker == "stripe" else 0.0)
+    lz1 = w * split - half
+    rz0, rz1 = w * split + half, w - pad
     return (lz0, lz1, rz0, rz1)
 
 
@@ -241,7 +255,7 @@ def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Gam
     for g in games:
         tl, bl, tr, br = _chip_lines(c, g, cfg, w, h, 1.0)
         left = max(_runs_width(tl), _runs_width(bl))
-        right = max(_runs_width(tr), _runs_width(br))
+        right = max(_runs_width(tr or []), _runs_width(br))
         if left > 0:
             scale = min(scale, lw / left)
         if right > 0:
@@ -269,12 +283,26 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> Non
 
     tl, bl, tr, br = _chip_lines(c, g, cfg, w, h, scale)
 
-    # Square each pair off: both lines in a zone get the same width, so their
-    # left and right edges line up.
-    for lines, zone_w, cx in ((( tl, bl), lw, lcx), ((tr, br), rw, rcx)):
-        target = min(max(_runs_width(lines[0]), _runs_width(lines[1])), zone_w)
-        _draw_runs(c, cx, ya, _justify(c, list(lines[0]), target))
-        _draw_runs(c, cx, yb, _justify(c, list(lines[1]), target))
+    if cfg.marker == "stripe":
+        sw = w * lay.stripe_w
+        inset = h * lay.border_ratio * 1.5
+        c.rounded_rect((x0 + inset * 1.6, y0 + inset * 2.2,
+                        x0 + inset * 1.6 + sw, y1 - inset * 2.2),
+                       sw / 2.0, fill=pal.gold if g.is_home else pal.purple)
+
+    # Square the left pair off: both lines get the same width, so their left
+    # and right edges line up.
+    target = min(max(_runs_width(tl), _runs_width(bl)), lw)
+    _draw_runs(c, lcx, ya, _justify(c, list(tl), target))
+    _draw_runs(c, lcx, yb, _justify(c, list(bl), target))
+
+    if tr is None:
+        # Single element on the right: centre it across both lines.
+        _draw_runs(c, rcx, (ya + yb) / 2.0, list(br))
+    else:
+        target = min(max(_runs_width(tr), _runs_width(br)), rw)
+        _draw_runs(c, rcx, ya, _justify(c, list(tr), target))
+        _draw_runs(c, rcx, yb, _justify(c, list(br), target))
 
 
 def _draw_footer(c: _Canvas, size, month_key: str, record: Tuple[int, int],
@@ -345,7 +373,12 @@ def build(cfg: Config, ttl: Optional[int] = None
 
     single = 0 < len(shown) <= cfg.single_column_max
     if cfg.pad_odd_months and not single and len(shown) % 2 == 1:
-        shown = shown + [shown[-1]]
+        # Fill the odd slot with the next game on the calendar rather than
+        # repeating one. If the season ends here there is nothing to borrow,
+        # so the grid stays odd instead of showing a game twice.
+        later = [x for x in games if x.start_utc > shown[-1].start_utc]
+        if later:
+            shown = shown + [later[0]]
 
     shown_season = shown[0].season if shown else season
     record = season_record(games, shown_season, cfg.record_includes_postseason)

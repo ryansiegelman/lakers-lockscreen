@@ -186,7 +186,8 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config) -> None:
         h * lay.date_size, lw, floor)
 
     # Left zone, bottom line: tip-off time before the game, result after it.
-    if g.completed and g.won is not None:
+    has_result = bool(g.completed and g.won is not None)
+    if has_result:
         letter = "W" if g.won else "L"
         score = g.score_line if cfg.show_scores else ""
 
@@ -228,11 +229,21 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config) -> None:
 
     # Square each pair off: both lines in a zone get the same width, so their
     # left and right edges line up.
-    for pair, zone_w, cx in ((( top_left, bot_left), lw, lcx),
-                             ((top_right, bot_right), rw, rcx)):
-        target = min(max(_runs_width(pair[0]), _runs_width(pair[1])), zone_w)
-        _draw_runs(c, cx, ya, _justify(c, list(pair[0]), target))
-        _draw_runs(c, cx, yb, _justify(c, list(pair[1]), target))
+    target_l = min(max(_runs_width(top_left), _runs_width(bot_left)), lw)
+    _draw_runs(c, lcx, ya, _justify(c, list(top_left), target_l))
+    if has_result:
+        # The W/L badge is much narrower than a date glyph, so sitting flush
+        # left leaves it stranded. Inset the result line, keeping its right
+        # edge aligned with the date above.
+        inset = lw * lay.result_indent
+        _draw_runs(c, lcx + inset / 2.0, yb,
+                   _justify(c, list(bot_left), target_l - inset))
+    else:
+        _draw_runs(c, lcx, yb, _justify(c, list(bot_left), target_l))
+
+    target_r = min(max(_runs_width(top_right), _runs_width(bot_right)), rw)
+    _draw_runs(c, rcx, ya, _justify(c, list(top_right), target_r))
+    _draw_runs(c, rcx, yb, _justify(c, list(bot_right), target_r))
 
 
 def _draw_footer(c: _Canvas, size, month_key: str, record: Tuple[int, int],

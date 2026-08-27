@@ -355,6 +355,22 @@ def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Gam
     return scale
 
 
+def _ink_height(c: _Canvas, runs: Sequence[Run]) -> float:
+    """Tallest drawn ink in a line, in final pixels."""
+    top = bot = 0.0
+    for r in runs:
+        if r["kind"] == "text":
+            bb = r["font"].getbbox(str(r["text"]))
+            h = (bb[3] - bb[1]) / float(c.ss)
+        elif r["kind"] == "badge":
+            h = float(r["size"])
+        else:
+            h = float(r["h"])
+        top = min(top, -h / 2.0)
+        bot = max(bot, h / 2.0)
+    return bot - top
+
+
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                tag_w: float = 0.0, line_target: float = 0.0,
                tag_h: float = 0.0, tag_letter: float = 0.0) -> None:
@@ -379,6 +395,15 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     ya, yb = y0 + h * lay.line1_y, y0 + h * lay.line2_y
 
     tl, bl, tr, br = _chip_lines(c, g, cfg, w, h, scale)
+
+    # Centre on the drawn ink, not on the nominal line positions. The two lines
+    # have different cap heights, so symmetric line centres leave the block
+    # sitting slightly high.
+    _ha, _hb = _ink_height(c, tl), _ink_height(c, bl)
+    _mid = ((ya - _ha / 2.0) + (yb + _hb / 2.0)) / 2.0
+    _shift = (y0 + h / 2.0) - _mid
+    ya += _shift
+    yb += _shift
     _tag_x1 = x1 - w * lay.tag_right_pad if cfg.marker == "tag" else None
 
     if cfg.marker == "tag":

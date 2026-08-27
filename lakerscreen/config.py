@@ -62,9 +62,9 @@ class Layout:
     column_gutter: float = 0.0550       # fraction of width
     # Chip proportions.
     max_pitch: float = 0.0744           # row-to-row spacing cap, of image height
-    single_col_width: float = 0.4000    # chip width in single-column mode, of image width
+    single_col_width: float = 0.3275    # chip width in single-column mode, of image width
     chip_height_ratio: float = 0.8300    # of the per-row pitch
-    chip_max_height: float = 0.0680     # of image height, caps chips in light months
+    chip_max_height: float = 0.0553     # of image height, caps chips in light months
     corner_radius_ratio: float = 0.3200   # of chip height
     border_ratio: float = 0.0300         # of chip height
     stack_dx: float = -0.025            # sticker-stack offset, of chip height
@@ -97,7 +97,8 @@ class Layout:
     tag_gap: float = 0.0450             # space between text block and tag, of chip width
     tag_right_pad: float = 0.0650       # tag inset from the chip's right edge
     justify_lines: bool = True         # stretch both lines to a shared width
-    ref_line: str = "MON, 3/23"         # width every line is set to
+    ref_line: str = "WED, 11/28"        # width every line is set to; the
+                                        # longest real date, so every month matches
     tag_outline: float = 0.018          # white keyline around the tag, of tag height
     tag_text_stroke: float = 0.032      # black keyline on the letters, of letter size
     tag_fill_accent: bool = True        # gold/purple tag + white letters,

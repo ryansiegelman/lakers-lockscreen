@@ -327,7 +327,8 @@ def _vertical_scale(c: _Canvas, cfg: Config, h: float) -> float:
 
 
 def _line_target(c: _Canvas, cfg: Config, w: float, h: float,
-                 games: Sequence[Game], scale: float, tag_w: float) -> float:
+                 games: Sequence[Game], scale: float, tag_w: float,
+                 season: Optional[Sequence[Game]] = None) -> float:
     """The single width every line in the month is set to.
 
     Anchored to a reference date string so a light month and a heavy one look
@@ -344,7 +345,9 @@ def _line_target(c: _Canvas, cfg: Config, w: float, h: float,
     target = sum(c.text_width(part, font, tracking) for part in ref)
     target += ds * lay.date_gap * max(0, len(ref) - 1)
 
-    for g in games:
+    # Measured across the whole season, not just this month, so November's
+    # longer dates do not make November's chips different from March's.
+    for g in (season or games):
         tl, bl, _, _ = _chip_lines(c, g, cfg, w, h, scale)
         target = max(target, _runs_width(tl), _runs_width(bl))
     return min(target, lz1 - lz0)
@@ -597,7 +600,7 @@ def build(cfg: Config, ttl: Optional[int] = None
 
         tag_w, tag_h_px, tag_letter_px = _tag_metrics(c, cfg, chip_h, shown)
         scale = _type_scale(c, cfg, col_w, chip_h, shown, tag_w)
-        line_target = _line_target(c, cfg, col_w, chip_h, shown, scale, tag_w)
+        line_target = _line_target(c, cfg, col_w, chip_h, shown, scale, tag_w, games)
         for i, g in enumerate(shown):
             row, col = divmod(i, cols)            # row-major: L, R, L, R ...
             x0 = col_x[col]

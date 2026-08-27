@@ -77,7 +77,7 @@ class Layout:
     date_size: float = 0.2800           # font sizes, of chip height
     time_size: float = 0.2000
     vs_size: float = 0.2216
-    team_size: float = 0.2103
+    team_size: float = 0.2000
     dot_w: float = 0.085                # home/away swatch, of chip height
     dot_h: float = 0.058
     dot_gap: float = 0.170              # space between vs/at and the swatch

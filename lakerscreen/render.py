@@ -239,7 +239,8 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config) -> None:
     swatch = pal.gold if g.is_home else pal.purple
     top_right = _fit(
         lambda s: [_text_run(c, "vs" if g.is_home else "at", s, pal.text,
-                             tracking=s * lay.vs_tracking, gap=h * lay.dot_gap),
+                             tracking=s * lay.vs_tracking, gap=h * lay.dot_gap,
+                             weight="light"),
                    _swatch_run(h * lay.dot_w, h * lay.dot_h, swatch)],
         h * lay.vs_size, rw, floor)
     bot_right = _fit(

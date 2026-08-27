@@ -84,7 +84,7 @@ class Layout:
     date_tracking: float = 0.050        # letter-spacing, as a fraction of font size
     vs_tracking: float = 0.250
     team_tracking: float = 0.344
-    badge_size: float = 0.190           # W/L badge square, of chip height
+    badge_size: float = 0.155           # W/L badge square, of chip height
     badge_radius: float = 0.300         # corner radius, of badge size
     badge_font: float = 0.720           # letter size inside the badge, of badge size
     result_gap: float = 0.45            # space between the W/L badge and the score

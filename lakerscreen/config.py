@@ -56,7 +56,7 @@ class Layout:
     # Vertical band the two-column grid may occupy (below clock, above footer).
     # Every value below was measured off the reference lock screen at 1206x2622.
     grid_top: float = 0.2796
-    grid_bottom: float = 0.8748
+    grid_bottom: float = 0.8520
     # Horizontal geometry.
     side_margin: float = 0.1202         # fraction of width
     column_gutter: float = 0.0730       # fraction of width
@@ -74,19 +74,19 @@ class Layout:
     zone_gap: float = 0.184             # dead space at the boundary, of chip width
     line1_y: float = 0.355              # vertical centres of the two text lines
     line2_y: float = 0.645
-    date_size: float = 0.2248           # font sizes, of chip height
+    date_size: float = 0.2800           # font sizes, of chip height
     time_size: float = 0.2295
     vs_size: float = 0.2216
     team_size: float = 0.2103
     dot_w: float = 0.085                # home/away swatch, of chip height
     dot_h: float = 0.058
     dot_gap: float = 0.170              # space between vs/at and the swatch
-    date_tracking: float = 0.120        # letter-spacing, as a fraction of font size
+    date_tracking: float = 0.050        # letter-spacing, as a fraction of font size
     vs_tracking: float = 0.250
     team_tracking: float = 0.344
-    result_size: float = 0.85           # W/L size relative to the score
-    result_gap: float = 0.62            # space between the W/L badge and the score
-    result_stroke: float = 0.090        # W/L outline weight, of its font size
+    result_size: float = 0.480          # W/L size relative to the score
+    result_gap: float = 0.45            # space between the W/L badge and the score
+    result_stroke: float = 0.060        # W/L outline weight, of its font size
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.
     grid_bottom_pad: float = 0.0

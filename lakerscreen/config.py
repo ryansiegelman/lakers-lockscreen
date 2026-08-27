@@ -55,22 +55,22 @@ class Layout:
     """
     # Vertical band the two-column grid may occupy (below clock, above footer).
     # Every value below was measured off the reference lock screen at 1206x2622.
-    grid_top: float = 0.2796
-    grid_bottom: float = 0.8520
+    grid_top: float = 0.2700
+    grid_bottom: float = 0.8700
     # Horizontal geometry.
-    side_margin: float = 0.1202         # fraction of width
-    column_gutter: float = 0.0730       # fraction of width
+    side_margin: float = 0.1000         # fraction of width
+    column_gutter: float = 0.0550       # fraction of width
     # Chip proportions.
     max_pitch: float = 0.0744           # row-to-row spacing cap, of image height
     single_col_width: float = 0.4600    # chip width in single-column mode, of image width
-    chip_height_ratio: float = 0.815    # of the per-row pitch
-    chip_max_height: float = 0.0610     # of image height, caps chips in light months
+    chip_height_ratio: float = 0.9700    # of the per-row pitch
+    chip_max_height: float = 0.0720     # of image height, caps chips in light months
     corner_radius_ratio: float = 0.3200   # of chip height
     border_ratio: float = 0.0300         # of chip height
     stack_dx: float = -0.025            # sticker-stack offset, of chip height
     stack_dy: float = 0.069
     # Chip interior. Contents sit in two zones, each centred on itself.
-    pad_x_ratio: float = 0.0950          # of chip width
+    pad_x_ratio: float = 0.0600          # of chip width
     split: float = 0.6400
     split_compact: float = 0.7300       # split when the marker needs less room
     stripe_w: float = 0.075             # home/away edge stripe, of chip width
@@ -91,7 +91,7 @@ class Layout:
     tag_letter: float = 0.6000           # letter size, of tag height
     tag_tracking: float = 0.120
     tag_gap: float = 0.0450             # space between text block and tag, of chip width
-    tag_outline: float = 0.045          # white keyline around the tag, of tag height
+    tag_outline: float = 0.000          # white keyline around the tag, of tag height
     tag_text_stroke: float = 0.032      # black keyline on the letters, of letter size
     tag_fill_accent: bool = True        # gold/purple tag + white letters,
                                         # else white tag + dark letters                # boundary between date zone and team zone
@@ -113,8 +113,8 @@ class Layout:
     badge_radius: float = 0.300         # corner radius, of badge size
     badge_font: float = 0.720           # letter size inside the badge, of badge size
     result_gap: float = 0.45            # space between the W/L badge and the score
-    chip_vpad: float = 0.115            # inner top/bottom margin, of chip height
-    line_min_gap: float = 0.055         # minimum ink gap between the two lines
+    chip_vpad: float = 0.0850            # inner top/bottom margin, of chip height
+    line_min_gap: float = 0.0700         # minimum ink gap between the two lines
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.
     grid_bottom_pad: float = 0.0

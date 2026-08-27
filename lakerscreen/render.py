@@ -312,15 +312,26 @@ def _vertical_scale(c: _Canvas, cfg: Config, h: float) -> float:
 
 def _line_target(c: _Canvas, cfg: Config, w: float, h: float,
                  games: Sequence[Game], scale: float, tag_w: float) -> float:
-    """Width every chip's text block is set to. Taken across the whole month so
-    the blocks are identical and the tags line up, rather than each chip sizing
-    itself to its own content."""
+    """The single width every line in the month is set to.
+
+    Anchored to a reference date string so a light month and a heavy one look
+    the same, and widened only if some real line is longer than the reference
+    (October's "WED, 10/21" is), since lines can be spread but not squeezed.
+    """
+    lay = cfg.layout
     lz0, lz1, _, _ = _zones(cfg, w, tag_w)
-    widest = 0.0
+
+    ds = h * lay.date_size * scale
+    ref = lay.ref_line.split()
+    font = c.font(ds)
+    tracking = ds * lay.date_tracking
+    target = sum(c.text_width(part, font, tracking) for part in ref)
+    target += ds * lay.date_gap * max(0, len(ref) - 1)
+
     for g in games:
         tl, bl, _, _ = _chip_lines(c, g, cfg, w, h, scale)
-        widest = max(widest, _runs_width(tl), _runs_width(bl))
-    return min(widest, lz1 - lz0)
+        target = max(target, _runs_width(tl), _runs_width(bl))
+    return min(target, lz1 - lz0)
 
 
 def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Game],
@@ -423,7 +434,7 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         # shared natural width - the wider of the two. Stretching them to the
         # full zone instead meant the shorter line more than doubled, so most
         # of its width was empty letter-gaps.
-        target = min(max(_runs_width(tl), _runs_width(bl)), lw)
+        target = line_target or min(max(_runs_width(tl), _runs_width(bl)), lw)
         _draw_runs(c, x0 + lz0, ya, _justify(c, list(tl), target), align="left")
         _draw_runs(c, x0 + lz0, yb, _justify(c, list(bl), target), align="left")
     else:

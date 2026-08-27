@@ -70,7 +70,7 @@ class Layout:
     stack_dx: float = -0.025            # sticker-stack offset, of chip height
     stack_dy: float = 0.069
     # Chip interior. Contents sit in two zones, each centred on itself.
-    pad_x_ratio: float = 0.0600          # of chip width
+    pad_x_ratio: float = 0.0850          # of chip width
     split: float = 0.6400
     split_compact: float = 0.7300       # split when the marker needs less room
     stripe_w: float = 0.075             # home/away edge stripe, of chip width
@@ -97,6 +97,7 @@ class Layout:
     tag_gap: float = 0.0450             # space between text block and tag, of chip width
     tag_right_pad: float = 0.0650       # tag inset from the chip's right edge
     justify_lines: bool = True         # stretch both lines to a shared width
+    ref_line: str = "MON, 3/23"         # width every line is set to
     tag_outline: float = 0.000          # white keyline around the tag, of tag height
     tag_text_stroke: float = 0.032      # black keyline on the letters, of letter size
     tag_fill_accent: bool = True        # gold/purple tag + white letters,
@@ -116,8 +117,8 @@ class Layout:
     vs_tracking: float = 0.250
     team_tracking: float = 0.2600
     badge_size: float = 0.1350           # W/L badge square, of chip height
-    badge_radius: float = 0.300         # corner radius, of badge size
-    badge_font: float = 0.720           # letter size inside the badge, of badge size
+    badge_radius: float = 0.500         # corner radius, of badge size
+    badge_font: float = 0.620           # letter size inside the badge, of badge size
     result_gap: float = 0.2600            # space between the W/L badge and the score
     chip_vpad: float = 0.0850            # inner top/bottom margin, of chip height
     line_min_gap: float = 0.0700         # minimum ink gap between the two lines

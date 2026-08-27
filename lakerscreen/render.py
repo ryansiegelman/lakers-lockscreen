@@ -256,8 +256,9 @@ def _zones(cfg: Config, w: float, tag_w: float = 0.0):
     pad = w * lay.pad_x_ratio
     half = w * lay.zone_gap / 2.0
     if cfg.marker == "tag":
-        # Text block runs from the padding to just short of the tag.
-        return (pad, w - pad - tag_w - w * lay.tag_gap, w - pad, w - pad)
+        # Text block runs from the left padding to just short of the tag.
+        right = w * lay.tag_right_pad
+        return (pad, w - right - tag_w - w * lay.tag_gap, w - pad, w - pad)
     if cfg.marker == "pill":
         # One text block; the pill occupies the right edge and is drawn directly.
         pill = w * lay.pill_w + w * lay.pill_gap
@@ -343,11 +344,7 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     ya, yb = y0 + h * lay.line1_y, y0 + h * lay.line2_y
 
     tl, bl, tr, br = _chip_lines(c, g, cfg, w, h, scale)
-    _tag_x1 = None
-    if lay.justify_lines and cfg.marker == "tag":
-        _slot = line_target or min(max(_runs_width(tl), _runs_width(bl)), lw)
-        _group = _slot + w * lay.tag_gap + tag_w
-        _tag_x1 = x0 + (w - _group) / 2.0 + _group
+    _tag_x1 = x1 - w * lay.tag_right_pad if cfg.marker == "tag" else None
 
     if cfg.marker == "tag":
         accent = pal.gold if g.is_home else pal.purple
@@ -399,17 +396,12 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                        sw / 2.0, fill=pal.gold if g.is_home else pal.purple)
 
     if lay.justify_lines:
-        # Each chip justifies its own two lines to their shared natural width,
-        # so tracking stays minimal. That block is then centred inside a slot
-        # sized once for the month, which is what keeps the tags in a column.
-        slot = line_target or min(max(_runs_width(tl), _runs_width(bl)), lw)
-        target = min(max(_runs_width(tl), _runs_width(bl)), slot)
-        gap = w * lay.tag_gap
-        group = slot + (gap + tag_w if cfg.marker == "tag" else 0.0)
-        gx = x0 + (w - group) / 2.0
-        tx = gx + (slot - target) / 2.0
-        _draw_runs(c, tx, ya, _justify(c, list(tl), target), align="left")
-        _draw_runs(c, tx, yb, _justify(c, list(bl), target), align="left")
+        # Both lines start at the chip's left padding and stretch across the
+        # full zone to the tag, so every chip's text spans the same span and
+        # the left edges form a column.
+        target = lw
+        _draw_runs(c, x0 + lz0, ya, _justify(c, list(tl), target), align="left")
+        _draw_runs(c, x0 + lz0, yb, _justify(c, list(bl), target), align="left")
     else:
         # Both lines start at the same x and keep their natural spacing.
         # Stretching them to a common width made a short line like "2:00 PM"

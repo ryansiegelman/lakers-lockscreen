@@ -346,12 +346,22 @@ def _line_target(c: _Canvas, cfg: Config, w: float, h: float,
     target = sum(c.text_width(part, font, tracking) for part in ref)
     target += ds * lay.date_gap * max(0, len(ref) - 1)
 
-    # Measured across the whole season, not just this month, so November's
-    # longer dates do not make November's chips different from March's.
-    for g in (season or games):
+    # Measured across this month only. A season-wide measure made every short
+    # date stretch to reach the season's longest ("MON, 10/27"), which read as
+    # broken spacing; within one month the dates are near-identical already.
+    top = bot = 0.0
+    for g in games:
         tl, bl, _, _ = _chip_lines(c, g, cfg, w, h, scale)
-        target = max(target, _runs_width(tl), _runs_width(bl))
-    return min(target, lz1 - lz0)
+        top = max(top, _runs_width(tl))
+        bot = max(bot, _runs_width(bl))
+    if lay.justify_per_role:
+        # Each line matches the same line on every other chip. Forcing the two
+        # lines in a chip to match each other instead would make "7:00 PM"
+        # stretch to the width of "WED, 10/21" - nearly double - which is what
+        # reads as broken spacing.
+        return (min(max(target, top), lz1 - lz0), min(bot, lz1 - lz0))
+    target = max(target, top, bot)
+    return (min(target, lz1 - lz0), min(target, lz1 - lz0))
 
 
 def _type_scale(c: _Canvas, cfg: Config, w: float, h: float, games: Sequence[Game],
@@ -428,8 +438,9 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     if cfg.marker == "tag":
         # Sit the tag in the middle of whatever is left between the end of the
         # text and the chip's right edge, rather than pinned to that edge.
-        _text_end = x0 + lz0 + (line_target or 0.0)
-        _inner_right = x1 - w * lay.pad_x_ratio      # match the left padding
+        _lt = max(line_target) if isinstance(line_target, tuple) else (line_target or 0.0)
+        _text_end = x0 + lz0 + _lt
+        _inner_right = x1 - w * lay.tag_right_pad    # the chip's inner border edge
         _tw = tag_w if tag_w > 0 else h * lay.tag_circle
         _tag_x1 = (_text_end + _inner_right) / 2.0 + _tw / 2.0
 
@@ -500,9 +511,11 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         # shared natural width - the wider of the two. Stretching them to the
         # full zone instead meant the shorter line more than doubled, so most
         # of its width was empty letter-gaps.
-        target = line_target or min(max(_runs_width(tl), _runs_width(bl)), lw)
-        _draw_runs(c, x0 + lz0, ya, _justify(c, list(tl), target), align="left")
-        _draw_runs(c, x0 + lz0, yb, _justify(c, list(bl), target), align="left")
+        t_top, t_bot = line_target if isinstance(line_target, tuple) else (line_target, line_target)
+        t_top = t_top or min(_runs_width(tl), lw)
+        t_bot = t_bot or min(_runs_width(bl), lw)
+        _draw_runs(c, x0 + lz0, ya, _justify(c, list(tl), t_top), align="left")
+        _draw_runs(c, x0 + lz0, yb, _justify(c, list(bl), t_bot), align="left")
     else:
         # Both lines start at the same x and keep their natural spacing.
         # Stretching them to a common width made a short line like "2:00 PM"

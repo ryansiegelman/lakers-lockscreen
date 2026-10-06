@@ -97,7 +97,7 @@ class Layout:
     tag_gap: float = 0.0500             # space between text block and tag, of chip width
     tag_right_pad: float = 0.0250       # tag inset from the chip's right edge
     justify_lines: bool = True         # stretch lines to a shared width
-    justify_per_role: bool = True      # dates match dates, line twos match
+    justify_per_role: bool = False      # dates match dates, line twos match
                                         # line twos, rather than each other
     ref_line: str = "WED, 11/28"        # width every line is set to; the
                                         # longest real date, so every month matches

@@ -268,7 +268,8 @@ def _tag_metrics(c: _Canvas, cfg: Config, h: float, games: Sequence[Game]):
         return 0.0, 0.0, 0.0
 
     if lay.tag_shape == "circle":
-        d = h * lay.tag_circle
+        d = h * lay.tag_circle                      # the coloured face
+        outer = d + 2.0 * d * (lay.tag_ring_contrast + lay.tag_ring_white)
         size = d * lay.tag_letter
         font = c.font(size)
         tr = size * lay.tag_tracking
@@ -276,7 +277,7 @@ def _tag_metrics(c: _Canvas, cfg: Config, h: float, games: Sequence[Game]):
         room = d * lay.tag_fit
         if widest > room > 0:
             size *= room / widest          # shrink the code to sit inside the circle
-        return d, d, size
+        return outer, outer, size
 
     th = h * lay.tag_h
     size = th * lay.tag_letter
@@ -423,23 +424,44 @@ def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     _shift = (y0 + h / 2.0) - _mid
     ya += _shift
     yb += _shift
-    _tag_x1 = x1 - w * lay.tag_right_pad if cfg.marker == "tag" else None
+    _tag_x1 = None
+    if cfg.marker == "tag":
+        # Sit the tag in the middle of whatever is left between the end of the
+        # text and the chip's right edge, rather than pinned to that edge.
+        _text_end = x0 + lz0 + (line_target or 0.0)
+        _inner_right = x1 - w * lay.pad_x_ratio      # match the left padding
+        _tw = tag_w if tag_w > 0 else h * lay.tag_circle
+        _tag_x1 = (_text_end + _inner_right) / 2.0 + _tw / 2.0
 
     if cfg.marker == "tag":
         accent = pal.gold if g.is_home else pal.purple
+        contrast = pal.purple if g.is_home else pal.gold
         th = tag_h or h * lay.tag_h
         lsz = tag_letter or th * lay.tag_letter
         font = c.font(lsz)
         tr_px = lsz * lay.tag_tracking
         tw = tag_w if tag_w > 0 else c.text_width(g.opponent, font, tr_px) + th * lay.tag_pad * 2
-        tx1 = _tag_x1 if _tag_x1 is not None else x1 - w * lay.tag_right_pad
+        tx1 = _tag_x1
         tcy = (y0 + y1) / 2.0
-        c.rounded_rect((tx1 - tw, tcy - th / 2.0, tx1, tcy + th / 2.0),
-                       th * (0.5 if lay.tag_shape == "circle" else lay.tag_radius),
-                       fill=accent if lay.tag_fill_accent else pal.badge_fill,
-                       outline=pal.chip_border if lay.tag_outline > 0 else None,
-                       width=th * lay.tag_outline)
-        c.text((tx1 - tw / 2.0, tcy), g.opponent, font,
+        tcx = tx1 - tw / 2.0
+
+        if lay.tag_shape == "circle":
+            # Three concentric discs. A single white keyline vanishes against
+            # the gold, so each face carries a ring of the other team colour
+            # first, with the white ring outside it.
+            face = tw / (1.0 + 2.0 * (lay.tag_ring_contrast + lay.tag_ring_white))
+            rings = ((tw, pal.chip_border),
+                     (tw - 2.0 * face * lay.tag_ring_white, contrast),
+                     (face, accent))
+            for d, colour in rings:
+                c.rounded_rect((tcx - d / 2.0, tcy - d / 2.0, tcx + d / 2.0, tcy + d / 2.0),
+                               d / 2.0, fill=colour)
+        else:
+            c.rounded_rect((tx1 - tw, tcy - th / 2.0, tx1, tcy + th / 2.0),
+                           th * lay.tag_radius,
+                           fill=accent if lay.tag_fill_accent else pal.badge_fill)
+
+        c.text((tcx, tcy), g.opponent, font,
                pal.text if lay.tag_fill_accent else pal.badge_text,
                tracking=tr_px, anchor="mc",
                stroke_width=th * lay.tag_letter * lay.tag_text_stroke,

@@ -92,14 +92,16 @@ class Layout:
     tag_tracking: float = 0.060
     tag_radius: float = 0.500          # tag corner radius, of tag height
     tag_shape: str = "circle"          # circle | pill
-    tag_circle: float = 0.460          # circle diameter, of chip height
+    tag_circle: float = 0.3710          # circle diameter, of chip height
     tag_fit: float = 0.700             # share of the diameter the code may span
-    tag_gap: float = 0.0450             # space between text block and tag, of chip width
+    tag_gap: float = 0.0950             # space between text block and tag, of chip width
     tag_right_pad: float = 0.0650       # tag inset from the chip's right edge
     justify_lines: bool = True         # stretch both lines to a shared width
     ref_line: str = "WED, 11/28"        # width every line is set to; the
                                         # longest real date, so every month matches
-    tag_outline: float = 0.018          # white keyline around the tag, of tag height
+    tag_outline: float = 0.000          # superseded by the two rings below
+    tag_ring_contrast: float = 0.070     # inner ring, in the opposite team colour
+    tag_ring_white: float = 0.050        # outer ring, white; of the accent diameter          # white keyline around the tag, of tag height
     tag_text_stroke: float = 0.032      # black keyline on the letters, of letter size
     tag_fill_accent: bool = True        # gold/purple tag + white letters,
                                         # else white tag + dark letters                # boundary between date zone and team zone

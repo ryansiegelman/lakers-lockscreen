@@ -655,6 +655,8 @@ def build(cfg: Config, ttl: Optional[int] = None
     """Render the wallpaper. Returns (image, month_key, games shown, record)."""
     W, H = cfg.dimensions
     lay = cfg.layout
+    if cfg.font_path:
+        assets.set_font(cfg.font_path)
     want = _resolve_month(cfg)
 
     anchor = datetime(int(want[:4]), int(want[5:]), 1, tzinfo=timezone.utc)

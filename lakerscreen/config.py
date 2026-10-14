@@ -142,7 +142,7 @@ class Layout:
     logo_text_gap: float = 0.055        # clearance either side of the text
     logo_corner_w: float = 0.142        # gold/purple arc thickness
     logo_code: float = 0.330            # team code inside the disc
-    logo_code_font: str = "assets/fonts/Bungee.ttf"
+    logo_code_font: str = "assets/fonts/LilitaOne.ttf"
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.
     grid_bottom_pad: float = 0.0
@@ -161,7 +161,8 @@ class Config:
     device: str = DEFAULT_DEVICE
     size: Optional[Tuple[int, int]] = None
     timezone: str = "America/Los_Angeles"
-    chip_style: str = "logo"            # pill (current) | logo (stacked card)
+    chip_style: str = "logo"
+    font_path: Optional[str] = "assets/fonts/LilitaOne.ttf"  # all chip text            # pill (current) | logo (stacked card)
     marker: str = "tag"                  # vs | tint | dot | stripe | pill | tag
     team: str = "lal"
     team_color: str = "552583"       # hex used to key the wordmark out of the logo

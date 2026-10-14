@@ -421,7 +421,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     off = h * lay.logo_offset
     accent = pal.gold if g.is_home else pal.purple
 
-    if lay.logo_gap_fill:
+    if lay.logo_accent == "gap":
         # Colour fills the whole offset shape; the chip then masks all of it
         # except the band showing past the chip's bottom and right edges.
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad, fill=accent)
@@ -432,12 +432,12 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     c.rounded_rect((x0, y0, x1, y1), rad,
                    fill=pal.chip_fill, outline=pal.chip_border, width=bw)
 
-    if lay.logo_gap_fill:
+    if lay.logo_accent == "gap":
         # White keyline back on top, so the colour reads as a band between the
         # chip's own border and that stroke.
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
                        fill=None, outline=pal.chip_border, width=bw)
-    else:
+    elif lay.logo_accent == "corner":
         tg = h * lay.logo_corner_w
         ax1, ay1 = x1 + off / 2.0, y1 + off / 2.0
         c.arc((ax1 - 2 * rad, ay1 - 2 * rad, ax1, ay1), 0, 90, accent, tg)
@@ -445,6 +445,11 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     # White disc with the team code.
     d = h * lay.logo_disc
     dcx, dcy = x0 + w * lay.logo_disc_cx, (y0 + y1) / 2.0
+    if lay.logo_accent == "ring":
+        # Home/away reads as a colour ring around the disc.
+        od = d + 2.0 * h * lay.logo_ring_w
+        c.rounded_rect((dcx - od / 2.0, dcy - od / 2.0, dcx + od / 2.0, dcy + od / 2.0),
+                       od / 2.0, fill=accent)
     c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
                    d / 2.0, fill=pal.chip_border)
     csz = h * lay.logo_code

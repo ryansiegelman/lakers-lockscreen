@@ -132,7 +132,7 @@ class Layout:
     logo_aspect: float = 2.650          # chip width / height
     logo_border: float = 0.065          # white stroke
     logo_radius: float = 0.440          # corner radius
-    logo_offset: float = 0.175          # offset stroke, same on both axes
+    logo_offset: float = 0.084          # offset stroke, same on both axes
     logo_disc: float = 0.619            # white disc diameter
     logo_disc_cx: float = 0.191         # disc centre, of chip width
     logo_text_cx: float = 0.622         # text block centre, of chip width
@@ -141,8 +141,8 @@ class Layout:
     logo_type: float = 0.274            # date and time, both the same size
     logo_text_gap: float = 0.055        # clearance either side of the text
     logo_corner_w: float = 0.142        # arc thickness, when corner mode is used
-    logo_gap_fill: bool = True          # colour the band between chip and
-                                        # offset stroke instead of a corner arc
+    logo_accent: str = "ring"           # ring | gap | corner | none
+    logo_ring_w: float = 0.075          # colour ring around the disc
     logo_code: float = 0.330            # team code inside the disc
     logo_code_font: str = "assets/sans/Khula.ttf"
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line

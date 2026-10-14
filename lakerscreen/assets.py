@@ -281,10 +281,19 @@ def local_image(path: str, trim: bool = True) -> Optional[Image.Image]:
 
 @lru_cache(maxsize=64)
 def font_file(path: str, size: int) -> Optional[ImageFont.FreeTypeFont]:
-    """Load a specific font file by path, or None if it is not there."""
-    if not path or not os.path.exists(os.path.expanduser(path)):
+    """Load a specific font file, or None if it is not there.
+
+    A relative path resolves against the project root, so a font shipped in
+    the repo is found wherever the renderer is run from.
+    """
+    if not path:
+        return None
+    cand = os.path.expanduser(path)
+    if not os.path.isabs(cand):
+        cand = os.path.join(ROOT, cand)
+    if not os.path.exists(cand):
         return None
     try:
-        return ImageFont.truetype(os.path.expanduser(path), max(1, int(size)))
+        return ImageFont.truetype(cand, max(1, int(size)))
     except Exception:
         return None

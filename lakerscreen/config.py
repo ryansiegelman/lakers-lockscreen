@@ -142,7 +142,7 @@ class Layout:
     logo_text_gap: float = 0.055        # clearance either side of the text
     logo_corner_w: float = 0.142        # gold/purple arc thickness
     logo_code: float = 0.330            # team code inside the disc
-    logo_code_font: str = "~/Library/Fonts/Laqula DEMO.ttf"
+    logo_code_font: str = "assets/fonts/Bungee.ttf"
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.
     grid_bottom_pad: float = 0.0

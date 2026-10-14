@@ -52,6 +52,16 @@ class _Canvas:
             width=max(1, int(round(width * s))),
         )
 
+    def line(self, p0, p1, fill, width):
+        s = self.ss
+        self.draw.line([p0[0] * s, p0[1] * s, p1[0] * s, p1[1] * s],
+                       fill=fill, width=max(1, int(round(width * s))))
+
+    def arc(self, box, start, end, fill, width):
+        s = self.ss
+        self.draw.arc([box[0] * s, box[1] * s, box[2] * s, box[3] * s],
+                      start, end, fill=fill, width=max(1, int(round(width * s))))
+
     def rect(self, box, fill):
         s = self.ss
         self.draw.rectangle([box[0] * s, box[1] * s, box[2] * s, box[3] * s], fill=fill)
@@ -411,14 +421,23 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     border = h * lay.border_ratio
     accent = pal.gold if g.is_home else pal.purple
 
-    # Three offset layers; the colour one is furthest back so only its corner
-    # shows past the chip in front.
-    for dx, dy, fill in (
-        (h * lay.logo_stack_dx, h * lay.logo_stack_dy, accent),
-        (h * lay.logo_mid_dx, h * lay.logo_mid_dy, pal.chip_fill),
-    ):
-        c.rounded_rect((x0 + dx, y0 + dy, x1 + dx, y1 + dy), radius,
-                       fill=fill, outline=pal.chip_border, width=border)
+    # One white-outlined layer offset behind the chip.
+    odx, ody = h * lay.logo_stack_dx, h * lay.logo_stack_dy
+    c.rounded_rect((x0 + odx, y0 + ody, x1 + odx, y1 + ody), radius,
+                   fill=pal.chip_fill, outline=pal.chip_border, width=border)
+
+    # The colour replaces that stroke along its bottom-right L: a run along the
+    # bottom, the corner arc, then a run up the right side.
+    cw_ = h * lay.logo_corner_w
+    bx, by = x1 + odx, y1 + ody
+    c.arc((bx - 2 * radius, by - 2 * radius, bx, by),
+          lay.logo_corner_start, lay.logo_corner_end, accent, cw_)
+    c.line((bx - radius - w * lay.logo_corner_run, by - cw_ / 2.0 + border / 2.0),
+           (bx - radius, by - cw_ / 2.0 + border / 2.0), accent, cw_)
+    c.line((bx - cw_ / 2.0 + border / 2.0, by - radius),
+           (bx - cw_ / 2.0 + border / 2.0, by - radius - h * lay.logo_corner_rise),
+           accent, cw_)
+
     c.rounded_rect((x0, y0, x1, y1), radius,
                    fill=pal.chip_fill, outline=pal.chip_border, width=border)
 

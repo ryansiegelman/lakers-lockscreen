@@ -135,10 +135,15 @@ class Layout:
     logo_crest: float = 0.880           # crest size inside the disc
     logo_stack_dx: float = 0.075        # colour layer offset, of chip height
     logo_stack_dy: float = 0.130
+    logo_corner_w: float = 0.2300        # colour arc thickness, of chip height
+    logo_corner_run: float = 0.170       # colour run along the bottom, of width
+    logo_corner_rise: float = 0.300      # colour run up the right, of height
+    logo_corner_start: float = 0.0      # degrees; 0 = 3 o'clock, 90 = 6 o'clock
+    logo_corner_end: float = 90.0
     logo_mid_dx: float = 0.038          # middle layer offset
     logo_mid_dy: float = 0.065
     logo_code: float = 0.330            # team code size inside the disc, of chip height
-    logo_code_font: str = "~/Library/Fonts/Laqula.otf"   # falls back to the
+    logo_code_font: str = "~/Library/Fonts/Laqula DEMO.ttf"   # falls back to the
                                         # chip face when the file is not present
     logo_date: float = 0.300            # type sizes, of chip height
     logo_time: float = 0.300

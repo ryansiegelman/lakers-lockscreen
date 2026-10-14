@@ -136,11 +136,11 @@ class Layout:
     logo_disc: float = 0.619            # white disc diameter
     logo_disc_cx: float = 0.191         # disc centre, of chip width
     logo_text_cx: float = 0.622         # text block centre, of chip width
-    logo_line1: float = 0.370           # line centres
-    logo_line2: float = 0.630
+    logo_line1: float = 0.387           # line centres
+    logo_line2: float = 0.652
     logo_type: float = 0.274            # date and time, both the same size
     logo_text_gap: float = 0.055        # clearance either side of the text
-    logo_corner_w: float = 0.145        # arc thickness, when corner mode is used
+    logo_corner_w: float = 0.142        # arc thickness, when corner mode is used
     logo_cap_depth: float = 0.420       # end-cap depth, of arc thickness
     logo_cap_radius: float = 0.170      # end-cap corner radius
     logo_accent: str = "corner"           # ring | gap | corner | none

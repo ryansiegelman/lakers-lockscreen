@@ -141,7 +141,7 @@ class Layout:
     logo_type: float = 0.274            # date and time, both the same size
     logo_text_gap: float = 0.055        # clearance either side of the text
     logo_corner_w: float = 0.142        # arc thickness, when corner mode is used
-    logo_accent: str = "ring"           # ring | gap | corner | none
+    logo_accent: str = "corner"           # ring | gap | corner | none
     logo_ring_w: float = 0.075          # colour ring around the disc
     logo_code: float = 0.330            # team code inside the disc
     logo_code_font: str = "assets/sans/Khula.ttf"

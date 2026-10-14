@@ -401,6 +401,73 @@ def _ink_height(c: _Canvas, runs: Sequence[Run]) -> float:
     return bot - top
 
 
+def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> None:
+    """Stacked-card chip: opponent crest in a white disc on the left, date and
+    time to its right, and a gold/purple layer showing at the bottom-right."""
+    lay, pal = cfg.layout, cfg.palette
+    x0, y0, x1, y1 = box
+    w, h = x1 - x0, y1 - y0
+    radius = h * lay.corner_radius_ratio
+    border = h * lay.border_ratio
+    accent = pal.gold if g.is_home else pal.purple
+
+    # Three offset layers; the colour one is furthest back so only its corner
+    # shows past the chip in front.
+    for dx, dy, fill in (
+        (h * lay.logo_stack_dx, h * lay.logo_stack_dy, accent),
+        (h * lay.logo_mid_dx, h * lay.logo_mid_dy, pal.chip_fill),
+    ):
+        c.rounded_rect((x0 + dx, y0 + dy, x1 + dx, y1 + dy), radius,
+                       fill=fill, outline=pal.chip_border, width=border)
+    c.rounded_rect((x0, y0, x1, y1), radius,
+                   fill=pal.chip_fill, outline=pal.chip_border, width=border)
+
+    # White disc holding the opponent crest.
+    d = h * lay.logo_disc
+    dx0 = x0 + w * lay.logo_pad
+    dcy = (y0 + y1) / 2.0
+    c.rounded_rect((dx0, dcy - d / 2.0, dx0 + d, dcy + d / 2.0), d / 2.0,
+                   fill=pal.chip_border)
+    # Team code in black inside the disc.
+    csz = h * lay.logo_code * scale
+    cfont = assets.font_file(lay.logo_code_font, int(round(csz * c.ss)))
+    if cfont is None:
+        cfont = c.font(csz)
+    while c.text_width(g.opponent, cfont, 0) > d * 0.74 and csz > 4:
+        csz *= 0.94
+        cfont = assets.font_file(lay.logo_code_font, int(round(csz * c.ss))) or c.font(csz)
+    c.text((dx0 + d / 2.0, dcy), g.opponent, cfont, pal.badge_text, anchor="mc")
+
+    # Date over time, centred in what is left to the right of the disc.
+    tx0 = dx0 + d + w * lay.logo_gap
+    tx1 = x1 - w * lay.logo_pad
+    tcx = (tx0 + tx1) / 2.0
+    zone = tx1 - tx0
+
+    def line(txt, size_ratio):
+        runs = [_text_run(c, txt, h * size_ratio * scale, pal.text,
+                          tracking=h * size_ratio * scale * lay.date_tracking)]
+        return _fit(lambda s: [_text_run(c, txt, s, pal.text,
+                                         tracking=s * lay.date_tracking)],
+                    h * size_ratio * scale, zone, lay.min_shrink)
+
+    weekday, datestr = _fmt_date(g)
+    top = line("%s %s" % (weekday, datestr), lay.logo_date)
+    if g.completed and g.won is not None:
+        bottom = line("%s %s" % ("W" if g.won else "L", g.score_line), lay.logo_time)
+    elif g.state == "in":
+        bottom = line("LIVE", lay.logo_time)
+    else:
+        bottom = line(g.start_local.strftime("%-I:%M%p").upper(), lay.logo_time)
+
+    ya, yb = y0 + h * lay.line1_y, y0 + h * lay.line2_y
+    _ha, _hb = _ink_height(c, top), _ink_height(c, bottom)
+    _mid = ((ya - _ha / 2.0) + (yb + _hb / 2.0)) / 2.0
+    shift = (y0 + h / 2.0) - _mid
+    _draw_runs(c, tcx, ya + shift, top)
+    _draw_runs(c, tcx, yb + shift, bottom)
+
+
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                tag_w: float = 0.0, line_target: float = 0.0,
                tag_h: float = 0.0, tag_letter: float = 0.0) -> None:
@@ -640,8 +707,11 @@ def build(cfg: Config, ttl: Optional[int] = None
             row, col = divmod(i, cols)            # row-major: L, R, L, R ...
             x0 = col_x[col]
             y0 = start_y + row * pitch + (pitch - chip_h) / 2.0
-            _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale,
-                       tag_w, line_target, tag_h_px, tag_letter_px)
+            if cfg.chip_style == "logo":
+                _draw_chip_logo(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale)
+            else:
+                _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale,
+                           tag_w, line_target, tag_h_px, tag_letter_px)
 
     _draw_footer(c, (W, H), month_key, record, cfg, _wordmark(cfg, shown_season))
     return c.flatten_onto(base), month_key, shown, record

@@ -127,6 +127,21 @@ class Layout:
     result_gap: float = 0.2600            # space between the W/L badge and the score
     chip_vpad: float = 0.0850            # inner top/bottom margin, of chip height
     line_min_gap: float = 0.0700         # minimum ink gap between the two lines
+    # "logo" chip style: opponent crest in a white disc, text to its right,
+    # and a colour layer peeking out at the bottom-right corner.
+    logo_disc: float = 0.660            # disc diameter, of chip height
+    logo_pad: float = 0.055             # disc inset from the chip's left edge, of width
+    logo_gap: float = 0.045             # space between disc and text, of width
+    logo_crest: float = 0.880           # crest size inside the disc
+    logo_stack_dx: float = 0.075        # colour layer offset, of chip height
+    logo_stack_dy: float = 0.130
+    logo_mid_dx: float = 0.038          # middle layer offset
+    logo_mid_dy: float = 0.065
+    logo_code: float = 0.330            # team code size inside the disc, of chip height
+    logo_code_font: str = "~/Library/Fonts/Laqula.otf"   # falls back to the
+                                        # chip face when the file is not present
+    logo_date: float = 0.300            # type sizes, of chip height
+    logo_time: float = 0.300
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.
     grid_bottom_pad: float = 0.0
@@ -145,6 +160,7 @@ class Config:
     device: str = DEFAULT_DEVICE
     size: Optional[Tuple[int, int]] = None
     timezone: str = "America/Los_Angeles"
+    chip_style: str = "logo"            # pill (current) | logo (stacked card)
     marker: str = "tag"                  # vs | tint | dot | stripe | pill | tag
     team: str = "lal"
     team_color: str = "552583"       # hex used to key the wordmark out of the logo

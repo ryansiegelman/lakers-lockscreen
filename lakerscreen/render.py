@@ -421,19 +421,26 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     off = h * lay.logo_offset
     accent = pal.gold if g.is_home else pal.purple
 
-    # One offset stroke behind, open so the wallpaper shows through it.
-    c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
-                   fill=None, outline=pal.chip_border, width=bw)
+    if lay.logo_gap_fill:
+        # Colour fills the whole offset shape; the chip then masks all of it
+        # except the band showing past the chip's bottom and right edges.
+        c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad, fill=accent)
+    else:
+        c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
+                       fill=None, outline=pal.chip_border, width=bw)
 
     c.rounded_rect((x0, y0, x1, y1), rad,
                    fill=pal.chip_fill, outline=pal.chip_border, width=bw)
 
-    # The colour spans the chip's own border, the gap, and the offset stroke at
-    # the bottom-right corner - on the reference that run is exactly as thick as
-    # all three together - so it is drawn last, over the chip.
-    tg = h * lay.logo_corner_w
-    ax1, ay1 = x1 + off / 2.0, y1 + off / 2.0
-    c.arc((ax1 - 2 * rad, ay1 - 2 * rad, ax1, ay1), 0, 90, accent, tg)
+    if lay.logo_gap_fill:
+        # White keyline back on top, so the colour reads as a band between the
+        # chip's own border and that stroke.
+        c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
+                       fill=None, outline=pal.chip_border, width=bw)
+    else:
+        tg = h * lay.logo_corner_w
+        ax1, ay1 = x1 + off / 2.0, y1 + off / 2.0
+        c.arc((ax1 - 2 * rad, ay1 - 2 * rad, ax1, ay1), 0, 90, accent, tg)
 
     # White disc with the team code.
     d = h * lay.logo_disc

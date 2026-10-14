@@ -438,9 +438,15 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
                        fill=None, outline=pal.chip_border, width=bw)
     elif lay.logo_accent == "corner":
+        # Thick enough to cover the chip's border, the gap and the offset
+        # stroke's outer edge, with discs at each end so the run reads rounded
+        # rather than cut square.
         tg = h * lay.logo_corner_w
         ax1, ay1 = x1 + off / 2.0, y1 + off / 2.0
+        ccx, ccy = ax1 - rad, ay1 - rad
         c.arc((ax1 - 2 * rad, ay1 - 2 * rad, ax1, ay1), 0, 90, accent, tg)
+        # The reference cuts the ends square; at this size any cap radius is
+        # below a pixel, and adding one leaves a visible step.
 
     # White disc with the team code.
     d = h * lay.logo_disc

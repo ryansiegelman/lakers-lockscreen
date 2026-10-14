@@ -412,79 +412,64 @@ def _ink_height(c: _Canvas, runs: Sequence[Run]) -> float:
 
 
 def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> None:
-    """Stacked-card chip: opponent crest in a white disc on the left, date and
-    time to its right, and a gold/purple layer showing at the bottom-right."""
+    """Stacked card, drawn to the proportions measured off the reference."""
     lay, pal = cfg.layout, cfg.palette
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
-    radius = h * lay.corner_radius_ratio
-    border = h * lay.border_ratio
+    rad = h * lay.logo_radius
+    bw = h * lay.logo_border
+    off = h * lay.logo_offset
     accent = pal.gold if g.is_home else pal.purple
 
-    # One white-outlined layer offset behind the chip.
-    odx, ody = h * lay.logo_stack_dx, h * lay.logo_stack_dy
-    c.rounded_rect((x0 + odx, y0 + ody, x1 + odx, y1 + ody), radius,
-                   fill=pal.chip_fill, outline=pal.chip_border, width=border)
+    # One offset stroke behind, open so the wallpaper shows through it.
+    c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
+                   fill=None, outline=pal.chip_border, width=bw)
 
-    # The colour replaces that stroke along its bottom-right L: a run along the
-    # bottom, the corner arc, then a run up the right side.
-    cw_ = h * lay.logo_corner_w
-    bx, by = x1 + odx, y1 + ody
-    c.arc((bx - 2 * radius, by - 2 * radius, bx, by),
-          lay.logo_corner_start, lay.logo_corner_end, accent, cw_)
-    c.line((bx - radius - w * lay.logo_corner_run, by - cw_ / 2.0 + border / 2.0),
-           (bx - radius, by - cw_ / 2.0 + border / 2.0), accent, cw_)
-    c.line((bx - cw_ / 2.0 + border / 2.0, by - radius),
-           (bx - cw_ / 2.0 + border / 2.0, by - radius - h * lay.logo_corner_rise),
-           accent, cw_)
+    c.rounded_rect((x0, y0, x1, y1), rad,
+                   fill=pal.chip_fill, outline=pal.chip_border, width=bw)
 
-    c.rounded_rect((x0, y0, x1, y1), radius,
-                   fill=pal.chip_fill, outline=pal.chip_border, width=border)
+    # The colour spans the chip's own border, the gap, and the offset stroke at
+    # the bottom-right corner - on the reference that run is exactly as thick as
+    # all three together - so it is drawn last, over the chip.
+    tg = h * lay.logo_corner_w
+    ax1, ay1 = x1 + off / 2.0, y1 + off / 2.0
+    c.arc((ax1 - 2 * rad, ay1 - 2 * rad, ax1, ay1), 0, 90, accent, tg)
 
-    # White disc holding the opponent crest.
+    # White disc with the team code.
     d = h * lay.logo_disc
-    dx0 = x0 + w * lay.logo_pad
-    dcy = (y0 + y1) / 2.0
-    c.rounded_rect((dx0, dcy - d / 2.0, dx0 + d, dcy + d / 2.0), d / 2.0,
-                   fill=pal.chip_border)
-    # Team code in black inside the disc.
-    csz = h * lay.logo_code * scale
-    cfont = assets.font_file(lay.logo_code_font, int(round(csz * c.ss)))
-    if cfont is None:
-        cfont = c.font(csz)
+    dcx, dcy = x0 + w * lay.logo_disc_cx, (y0 + y1) / 2.0
+    c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
+                   d / 2.0, fill=pal.chip_border)
+    csz = h * lay.logo_code
+    cfont = assets.font_file(lay.logo_code_font, int(round(csz * c.ss))) or c.font(csz)
     while c.text_width(g.opponent, cfont, 0) > d * 0.74 and csz > 4:
         csz *= 0.94
         cfont = assets.font_file(lay.logo_code_font, int(round(csz * c.ss))) or c.font(csz)
-    c.text((dx0 + d / 2.0, dcy), g.opponent, cfont, pal.badge_text, anchor="mc")
+    c.text((dcx, dcy), g.opponent, cfont, pal.badge_text, anchor="mc")
 
-    # Date over time, centred in what is left to the right of the disc.
-    tx0 = dx0 + d + w * lay.logo_gap
-    tx1 = x1 - w * lay.logo_pad
-    tcx = (tx0 + tx1) / 2.0
-    zone = tx1 - tx0
-
-    def line(txt, size_ratio):
-        runs = [_text_run(c, txt, h * size_ratio * scale, pal.text,
-                          tracking=h * size_ratio * scale * lay.date_tracking)]
-        return _fit(lambda s: [_text_run(c, txt, s, pal.text,
-                                         tracking=s * lay.date_tracking)],
-                    h * size_ratio * scale, zone, lay.min_shrink)
-
+    # Date over time, both the same size, centred as a block.
+    tsz = h * lay.logo_type
+    font = c.font(tsz)
     weekday, datestr = _fmt_date(g)
-    top = line("%s %s" % (weekday, datestr), lay.logo_date)
+    top_txt = "%s %s" % (weekday, datestr)
     if g.completed and g.won is not None:
-        bottom = line("%s %s" % ("W" if g.won else "L", g.score_line), lay.logo_time)
+        bot_txt = "%s %s" % ("W" if g.won else "L", g.score_line)
     elif g.state == "in":
-        bottom = line("LIVE", lay.logo_time)
+        bot_txt = "LIVE"
     else:
-        bottom = line(g.start_local.strftime("%-I:%M%p").upper(), lay.logo_time)
+        bot_txt = g.start_local.strftime("%-I:%M%p").upper()
 
-    ya, yb = y0 + h * lay.line1_y, y0 + h * lay.line2_y
-    _ha, _hb = _ink_height(c, top), _ink_height(c, bottom)
-    _mid = ((ya - _ha / 2.0) + (yb + _hb / 2.0)) / 2.0
-    shift = (y0 + h / 2.0) - _mid
-    _draw_runs(c, tcx, ya + shift, top)
-    _draw_runs(c, tcx, yb + shift, bottom)
+    # October's dates run longer than the reference's; shrink rather than let
+    # them crowd the disc.
+    tcx = x0 + w * lay.logo_text_cx
+    room = 2.0 * min(tcx - (dcx + d / 2.0 + w * lay.logo_text_gap),
+                     (x1 - w * lay.logo_text_gap) - tcx)
+    widest = max(c.text_width(top_txt, font, 0), c.text_width(bot_txt, font, 0))
+    if widest > room > 0:
+        tsz *= room / widest
+        font = c.font(tsz)
+    for txt, ly in ((top_txt, lay.logo_line1), (bot_txt, lay.logo_line2)):
+        c.text((tcx, y0 + h * ly), txt, font, pal.text, anchor="mc")
 
 
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,

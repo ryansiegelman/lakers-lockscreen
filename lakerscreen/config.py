@@ -127,26 +127,22 @@ class Layout:
     result_gap: float = 0.2600            # space between the W/L badge and the score
     chip_vpad: float = 0.0850            # inner top/bottom margin, of chip height
     line_min_gap: float = 0.0700         # minimum ink gap between the two lines
-    # "logo" chip style: opponent crest in a white disc, text to its right,
-    # and a colour layer peeking out at the bottom-right corner.
-    logo_disc: float = 0.660            # disc diameter, of chip height
-    logo_pad: float = 0.055             # disc inset from the chip's left edge, of width
-    logo_gap: float = 0.045             # space between disc and text, of width
-    logo_crest: float = 0.880           # crest size inside the disc
-    logo_stack_dx: float = 0.075        # colour layer offset, of chip height
-    logo_stack_dy: float = 0.130
-    logo_corner_w: float = 0.2300        # colour arc thickness, of chip height
-    logo_corner_run: float = 0.170       # colour run along the bottom, of width
-    logo_corner_rise: float = 0.300      # colour run up the right, of height
-    logo_corner_start: float = 0.0      # degrees; 0 = 3 o'clock, 90 = 6 o'clock
-    logo_corner_end: float = 90.0
-    logo_mid_dx: float = 0.038          # middle layer offset
-    logo_mid_dy: float = 0.065
-    logo_code: float = 0.330            # team code size inside the disc, of chip height
-    logo_code_font: str = "~/Library/Fonts/Laqula DEMO.ttf"   # falls back to the
-                                        # chip face when the file is not present
-    logo_date: float = 0.300            # type sizes, of chip height
-    logo_time: float = 0.300
+    # "logo" chip style. Every value measured off the supplied reference card
+    # (410x155 px), expressed against chip height unless noted.
+    logo_aspect: float = 2.650          # chip width / height
+    logo_border: float = 0.065          # white stroke
+    logo_radius: float = 0.440          # corner radius
+    logo_offset: float = 0.084          # offset stroke, same on both axes
+    logo_disc: float = 0.619            # white disc diameter
+    logo_disc_cx: float = 0.191         # disc centre, of chip width
+    logo_text_cx: float = 0.622         # text block centre, of chip width
+    logo_line1: float = 0.387           # line centres
+    logo_line2: float = 0.652
+    logo_type: float = 0.274            # date and time, both the same size
+    logo_text_gap: float = 0.055        # clearance either side of the text
+    logo_corner_w: float = 0.142        # gold/purple arc thickness
+    logo_code: float = 0.330            # team code inside the disc
+    logo_code_font: str = "~/Library/Fonts/Laqula DEMO.ttf"
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.
     grid_bottom_pad: float = 0.0

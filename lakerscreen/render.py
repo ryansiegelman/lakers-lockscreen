@@ -474,9 +474,10 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
             [(x0 + inner) * ss, (y0 + inner) * ss,
              (x1 - inner) * ss, (y1 - inner) * ss],
             radius=int(round(max(0.0, rad - inner) * ss)), fill=(0, 0, 0, 0))
-        # Keep the right edge only: bottom-right corner, up the side, through
-        # the top-right corner. Everything left of the corner centres goes.
-        td.rectangle([0, 0, (x1 - rad) * ss, tmp.size[1]], fill=(0, 0, 0, 0))
+        # Keep the bottom-right corner only.
+        ccx, ccy = (x1 - rad) * ss, (y1 - rad) * ss
+        td.rectangle([0, 0, ccx, tmp.size[1]], fill=(0, 0, 0, 0))
+        td.rectangle([0, 0, tmp.size[0], ccy], fill=(0, 0, 0, 0))
         c.layer.alpha_composite(tmp)
 
     # White disc with the team code.
@@ -500,8 +501,11 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     tsz = h * lay.logo_type
     font = c.font(tsz)
     top_txt = _fmt_date_style(g, cfg.date_format)
+    result_mark = result_score = None
     if g.completed and g.won is not None:
-        bot_txt = "%s %s" % ("W" if g.won else "L", g.score_line)
+        result_mark = "W" if g.won else "L"
+        result_score = g.score_line
+        bot_txt = "%s %s" % (result_mark, result_score)
     elif g.state == "in":
         bot_txt = "LIVE"
     else:
@@ -516,8 +520,22 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     if widest > room > 0:
         tsz *= room / widest
         font = c.font(tsz)
-    for txt, ly in ((top_txt, lay.logo_line1), (bot_txt, lay.logo_line2)):
-        c.text((tcx, y0 + h * ly), txt, font, pal.text, anchor="mc")
+
+    c.text((tcx, y0 + h * lay.logo_line1), top_txt, font, pal.text, anchor="mc")
+
+    if result_mark:
+        # W/L set smaller but in a heavier weight, held off the score.
+        msz = tsz * lay.logo_mark_size
+        mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
+        gap = tsz * lay.logo_mark_gap
+        mw = c.text_width(result_mark, mfont, 0)
+        sw = c.text_width(result_score, font, 0)
+        start = tcx - (mw + gap + sw) / 2.0
+        yb = y0 + h * lay.logo_line2
+        c.text((start, yb), result_mark, mfont, pal.text, anchor="lc")
+        c.text((start + mw + gap, yb), result_score, font, pal.text, anchor="lc")
+    else:
+        c.text((tcx, y0 + h * lay.logo_line2), bot_txt, font, pal.text, anchor="mc")
 
 
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,

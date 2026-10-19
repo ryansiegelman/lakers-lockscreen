@@ -148,6 +148,9 @@ class Layout:
     logo_accent: str = "corner"           # ring | gap | corner | none
     logo_ring_w: float = 0.075          # colour ring around the disc
     logo_code: float = 0.330            # team code inside the disc
+    logo_mark_size: float = 0.780       # W/L size, of the score's size
+    logo_mark_gap: float = 0.520        # space after the W/L, of the score's size
+    logo_mark_font: str = "assets/sans/Khula-ExtraBold.ttf"
     logo_code_font: str = "assets/sans/Khula.ttf"
     min_shrink: float = 0.62            # floor for auto-shrinking an overlong line
     # Footer.

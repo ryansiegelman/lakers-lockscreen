@@ -203,6 +203,19 @@ def _fmt_date(g: Game):
             g.start_local.strftime("%-m/%-d"))
 
 
+def _fmt_date_style(g: Game, style: str) -> str:
+    """One-line date. The month is the same on every chip of a given
+    wallpaper, so dropping it is an option worth having."""
+    wd = g.start_local.strftime("%a").upper()
+    if style == "nocomma":
+        return "%s %s" % (wd, g.start_local.strftime("%-m/%-d"))
+    if style == "dayonly":
+        return "%s, %s" % (wd, g.start_local.strftime("%-d"))
+    if style == "nameless":
+        return g.start_local.strftime("%-m/%-d")
+    return "%s, %s" % (wd, g.start_local.strftime("%-m/%-d"))
+
+
 def _fmt_time(g: Game) -> str:
     return g.start_local.strftime("%-I:%M %p").upper()
 
@@ -468,8 +481,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     # Date over time, both the same size, centred as a block.
     tsz = h * lay.logo_type
     font = c.font(tsz)
-    weekday, datestr = _fmt_date(g)
-    top_txt = "%s %s" % (weekday, datestr)
+    top_txt = _fmt_date_style(g, cfg.date_format)
     if g.completed and g.won is not None:
         bot_txt = "%s %s" % ("W" if g.won else "L", g.score_line)
     elif g.state == "in":

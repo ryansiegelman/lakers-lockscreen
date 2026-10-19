@@ -166,6 +166,8 @@ class Config:
     size: Optional[Tuple[int, int]] = None
     timezone: str = "America/Los_Angeles"
     chip_style: str = "logo"
+    date_format: str = "full"           # full "FRI, 10/23" | nocomma "FRI 10/23"
+                                        # | dayonly "FRI, 23" | nameless "10/23"
     font_path: Optional[str] = "assets/sans/Khula.ttf"   # all chip text
     marker: str = "tag"                  # vs | tint | dot | stripe | pill | tag
     team: str = "lal"

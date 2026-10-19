@@ -469,7 +469,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
             [(x0 + ox - bleed) * ss, (y0 + ox - bleed) * ss,
              (x1 + ox + bleed) * ss, (y1 + ox + bleed) * ss],
             radius=int(round((rad + bleed) * ss)), fill=accent)
-        inner = (off if lay.logo_stack else 0.0) * 0.0 + bw - bleed
+        inner = bw + bleed               # erase BEYOND the stroke, not into it
         td.rounded_rectangle(
             [(x0 + inner) * ss, (y0 + inner) * ss,
              (x1 - inner) * ss, (y1 - inner) * ss],

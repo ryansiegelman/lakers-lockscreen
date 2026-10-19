@@ -531,12 +531,13 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         sw = c.text_width(result_score, font, 0)
         yb = y0 + h * lay.logo_line2
 
-        # Fixed slot sized to the wider of the two letters, with the letter
-        # centred in it. Otherwise a W and an L give different totals and the
-        # score lands at a different x depending on the result.
+        # Fixed slot sized to the wider of the two letters, so a W and an L
+        # give the same total and the score lands at the same x either way.
+        # The mark is right-aligned in that slot: centred, a narrow L would
+        # float further from the figure than a wide W.
         slot = max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0))
         start = tcx - (slot + gap + sw) / 2.0
-        c.text((start + slot / 2.0, yb), result_mark, mfont, pal.text, anchor="mc")
+        c.text((start + slot, yb), result_mark, mfont, pal.text, anchor="rc")
         c.text((start + slot + gap, yb), result_score, font, pal.text, anchor="lc")
 
     else:

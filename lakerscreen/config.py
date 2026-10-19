@@ -148,10 +148,10 @@ class Layout:
     logo_accent: str = "corner"           # ring | gap | corner | none
     logo_ring_w: float = 0.075          # colour ring around the disc
     logo_code: float = 0.330            # team code inside the disc
-    logo_mark_circle: bool = True       # W/L sits in a small white disc
+    logo_mark_circle: bool = False       # W/L sits in a small white disc
     logo_mark_dia: float = 0.980        # that disc's diameter, of the score size
     logo_mark_fit: float = 0.560        # share of the disc the letter may span
-    logo_mark_size: float = 0.780       # W/L size, of the score's size
+    logo_mark_size: float = 0.680       # W/L size, of the score's size
     logo_mark_gap: float = 0.520        # space after the W/L, of the score's size
     logo_mark_font: str = "assets/sans/Khula-ExtraBold.ttf"
     logo_code_font: str = "assets/sans/Khula.ttf"

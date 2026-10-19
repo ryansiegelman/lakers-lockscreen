@@ -530,25 +530,15 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         gap = tsz * lay.logo_mark_gap
         sw = c.text_width(result_score, font, 0)
         yb = y0 + h * lay.logo_line2
-        if lay.logo_mark_circle:
-            # Small white disc holding the letter, echoing the team disc.
-            dia = tsz * lay.logo_mark_dia
-            # Keep the letter clear of the disc edge, as the team code is.
-            while c.text_width(result_mark, mfont, 0) > dia * lay.logo_mark_fit and msz > 4:
-                msz *= 0.94
-                mfont = assets.font_file(lay.logo_mark_font,
-                                         int(round(msz * c.ss))) or c.font(msz)
-            start = tcx - (dia + gap + sw) / 2.0
-            cxm = start + dia / 2.0
-            c.rounded_rect((cxm - dia / 2.0, yb - dia / 2.0, cxm + dia / 2.0, yb + dia / 2.0),
-                           dia / 2.0, fill=pal.chip_border)
-            c.text((cxm, yb), result_mark, mfont, pal.badge_text, anchor="mc")
-            c.text((start + dia + gap, yb), result_score, font, pal.text, anchor="lc")
-        else:
-            mw = c.text_width(result_mark, mfont, 0)
-            start = tcx - (mw + gap + sw) / 2.0
-            c.text((start, yb), result_mark, mfont, pal.text, anchor="lc")
-            c.text((start + mw + gap, yb), result_score, font, pal.text, anchor="lc")
+
+        # Fixed slot sized to the wider of the two letters, with the letter
+        # centred in it. Otherwise a W and an L give different totals and the
+        # score lands at a different x depending on the result.
+        slot = max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0))
+        start = tcx - (slot + gap + sw) / 2.0
+        c.text((start + slot / 2.0, yb), result_mark, mfont, pal.text, anchor="mc")
+        c.text((start + slot + gap, yb), result_score, font, pal.text, anchor="lc")
+
     else:
         c.text((tcx, y0 + h * lay.logo_line2), bot_txt, font, pal.text, anchor="mc")
 

@@ -141,6 +141,7 @@ class Layout:
     logo_line2: float = 0.680
     logo_type: float = 0.274            # date and time, both the same size
     logo_text_gap: float = 0.055        # clearance either side of the text
+    logo_cling_rise: float = 0.120      # how far up the right side the run goes
     logo_corner_w: float = 0.142        # arc thickness, when corner mode is used
     logo_cap_depth: float = 0.420       # end-cap depth, of arc thickness
     logo_cap_radius: float = 0.170      # end-cap corner radius

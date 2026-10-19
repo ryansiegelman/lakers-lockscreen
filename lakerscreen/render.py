@@ -474,9 +474,12 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
             [(x0 + inner) * ss, (y0 + inner) * ss,
              (x1 - inner) * ss, (y1 - inner) * ss],
             radius=int(round(max(0.0, rad - inner) * ss)), fill=(0, 0, 0, 0))
-        ccx, ccy = (x1 - rad) * ss, (y1 - rad) * ss
-        td.rectangle([0, 0, ccx, tmp.size[1]], fill=(0, 0, 0, 0))
-        td.rectangle([0, 0, tmp.size[0], ccy], fill=(0, 0, 0, 0))
+        # Keep the run from the bottom-left corner, along the bottom, round the
+        # bottom-right corner and a way up the right side.
+        ccx, ccy = x1 - rad, y1 - rad
+        rise = h * lay.logo_cling_rise
+        td.rectangle([0, 0, ccx * ss, ccy * ss], fill=(0, 0, 0, 0))
+        td.rectangle([ccx * ss, 0, tmp.size[0], (ccy - rise) * ss], fill=(0, 0, 0, 0))
         c.layer.alpha_composite(tmp)
 
     # White disc with the team code.

@@ -528,12 +528,27 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         msz = tsz * lay.logo_mark_size
         mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
         gap = tsz * lay.logo_mark_gap
-        mw = c.text_width(result_mark, mfont, 0)
         sw = c.text_width(result_score, font, 0)
-        start = tcx - (mw + gap + sw) / 2.0
         yb = y0 + h * lay.logo_line2
-        c.text((start, yb), result_mark, mfont, pal.text, anchor="lc")
-        c.text((start + mw + gap, yb), result_score, font, pal.text, anchor="lc")
+        if lay.logo_mark_circle:
+            # Small white disc holding the letter, echoing the team disc.
+            dia = tsz * lay.logo_mark_dia
+            # Keep the letter clear of the disc edge, as the team code is.
+            while c.text_width(result_mark, mfont, 0) > dia * lay.logo_mark_fit and msz > 4:
+                msz *= 0.94
+                mfont = assets.font_file(lay.logo_mark_font,
+                                         int(round(msz * c.ss))) or c.font(msz)
+            start = tcx - (dia + gap + sw) / 2.0
+            cxm = start + dia / 2.0
+            c.rounded_rect((cxm - dia / 2.0, yb - dia / 2.0, cxm + dia / 2.0, yb + dia / 2.0),
+                           dia / 2.0, fill=pal.chip_border)
+            c.text((cxm, yb), result_mark, mfont, pal.badge_text, anchor="mc")
+            c.text((start + dia + gap, yb), result_score, font, pal.text, anchor="lc")
+        else:
+            mw = c.text_width(result_mark, mfont, 0)
+            start = tcx - (mw + gap + sw) / 2.0
+            c.text((start, yb), result_mark, mfont, pal.text, anchor="lc")
+            c.text((start + mw + gap, yb), result_score, font, pal.text, anchor="lc")
     else:
         c.text((tcx, y0 + h * lay.logo_line2), bot_txt, font, pal.text, anchor="mc")
 

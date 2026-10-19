@@ -132,6 +132,7 @@ class Layout:
     logo_aspect: float = 2.650          # chip width / height
     logo_border: float = 0.065          # white stroke
     logo_radius: float = 0.440          # corner radius
+    logo_stack: bool = True             # draw the offset stroke behind
     logo_offset: float = 0.084          # offset stroke, same on both axes
     logo_disc: float = 0.619            # white disc diameter
     logo_disc_cx: float = 0.191         # disc centre, of chip width
@@ -166,7 +167,7 @@ class Config:
     size: Optional[Tuple[int, int]] = None
     timezone: str = "America/Los_Angeles"
     chip_style: str = "logo"
-    date_format: str = "dayonly"           # full "FRI, 10/23" | nocomma "FRI 10/23"
+    date_format: str = "full"           # full "FRI, 10/23" | nocomma "FRI 10/23"
                                         # | dayonly "FRI, 23" | nameless "10/23"
     font_path: Optional[str] = "assets/sans/Khula.ttf"   # all chip text
     marker: str = "tag"                  # vs | tint | dot | stripe | pill | tag

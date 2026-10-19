@@ -438,7 +438,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         # Colour fills the whole offset shape; the chip then masks all of it
         # except the band showing past the chip's bottom and right edges.
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad, fill=accent)
-    else:
+    elif lay.logo_stack:
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
                        fill=None, outline=pal.chip_border, width=bw)
 
@@ -451,23 +451,28 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
                        fill=None, outline=pal.chip_border, width=bw)
     elif lay.logo_accent == "corner":
-        # Thick enough to cover the chip's border, the gap and the offset
-        # stroke's outer edge, with discs at each end so the run reads rounded
-        # rather than cut square.
-        # PIL draws an arc's width inward from the bounding box, so the box has
-        # to be sized to the cling's OUTER edge, not its centreline.
-        #
-        # The two white lines are offset diagonally, so measured from a path
-        # midway between them each sits off/2 out at 0 and 90 degrees but
-        # off/sqrt(2) out at 45. Covering both everywhere therefore needs a
-        # run of sqrt(2)*off + border, reaching that far on each side.
-        ccx, ccy = x1 + off / 2.0 - rad, y1 + off / 2.0 - rad
-        reach = off * 0.70711 + bw / 2.0
-        outer = rad + reach
-        tg = 2.0 * reach
-        c.arc((ccx - outer, ccy - outer, ccx + outer, ccy + outer), 0, 90, accent, tg)
-        # The reference cuts the ends square; at this size any cap radius is
-        # below a pixel, and adding one leaves a visible step.
+        # The chip border and the offset stroke are circles about different
+        # centres, so no single arc follows both: sized to the 45 degree gap it
+        # overshoots at the ends, sized to the ends it leaves the outer line
+        # bare at 45. Build the run from the boundaries instead - inside the
+        # outermost stroke's outer edge, outside the chip border's inner edge -
+        # keeping only the bottom-right corner of that band.
+        ss = c.ss
+        tmp = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
+        td = ImageDraw.Draw(tmp)
+        ox = off if lay.logo_stack else 0.0
+        td.rounded_rectangle(
+            [(x0 + ox - bw / 2.0) * ss, (y0 + ox - bw / 2.0) * ss,
+             (x1 + ox + bw / 2.0) * ss, (y1 + ox + bw / 2.0) * ss],
+            radius=int(round((rad + bw / 2.0) * ss)), fill=accent)
+        td.rounded_rectangle(
+            [(x0 + bw / 2.0) * ss, (y0 + bw / 2.0) * ss,
+             (x1 - bw / 2.0) * ss, (y1 - bw / 2.0) * ss],
+            radius=int(round(max(0.0, rad - bw / 2.0) * ss)), fill=(0, 0, 0, 0))
+        ccx, ccy = (x1 - rad) * ss, (y1 - rad) * ss
+        td.rectangle([0, 0, ccx, tmp.size[1]], fill=(0, 0, 0, 0))
+        td.rectangle([0, 0, tmp.size[0], ccy], fill=(0, 0, 0, 0))
+        c.layer.alpha_composite(tmp)
 
     # White disc with the team code.
     d = h * lay.logo_disc

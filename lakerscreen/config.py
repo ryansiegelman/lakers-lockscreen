@@ -137,7 +137,7 @@ class Layout:
     logo_disc_cx: float = 0.191         # disc centre, of chip width
     logo_text_cx: float = 0.622         # text block centre, of chip width
     logo_line1: float = 0.387           # line centres
-    logo_line2: float = 0.652
+    logo_line2: float = 0.680
     logo_type: float = 0.274            # date and time, both the same size
     logo_text_gap: float = 0.055        # clearance either side of the text
     logo_corner_w: float = 0.142        # arc thickness, when corner mode is used
@@ -166,7 +166,7 @@ class Config:
     size: Optional[Tuple[int, int]] = None
     timezone: str = "America/Los_Angeles"
     chip_style: str = "logo"
-    date_format: str = "full"           # full "FRI, 10/23" | nocomma "FRI 10/23"
+    date_format: str = "dayonly"           # full "FRI, 10/23" | nocomma "FRI 10/23"
                                         # | dayonly "FRI, 23" | nameless "10/23"
     font_path: Optional[str] = "assets/sans/Khula.ttf"   # all chip text
     marker: str = "tag"                  # vs | tint | dot | stripe | pill | tag

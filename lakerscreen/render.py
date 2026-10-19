@@ -460,15 +460,20 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         ss = c.ss
         tmp = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
         td = ImageDraw.Draw(tmp)
+        # Pillow draws a rounded-rect outline INWARD from the bounds, so the
+        # stroke occupies rad-bw..rad, not rad-bw/2..rad+bw/2. Matching that
+        # exactly is what stops a hairline of white surviving on the outside.
         ox = off if lay.logo_stack else 0.0
+        bleed = 0.6                      # cover antialiasing on both edges
         td.rounded_rectangle(
-            [(x0 + ox - bw / 2.0) * ss, (y0 + ox - bw / 2.0) * ss,
-             (x1 + ox + bw / 2.0) * ss, (y1 + ox + bw / 2.0) * ss],
-            radius=int(round((rad + bw / 2.0) * ss)), fill=accent)
+            [(x0 + ox - bleed) * ss, (y0 + ox - bleed) * ss,
+             (x1 + ox + bleed) * ss, (y1 + ox + bleed) * ss],
+            radius=int(round((rad + bleed) * ss)), fill=accent)
+        inner = (off if lay.logo_stack else 0.0) * 0.0 + bw - bleed
         td.rounded_rectangle(
-            [(x0 + bw / 2.0) * ss, (y0 + bw / 2.0) * ss,
-             (x1 - bw / 2.0) * ss, (y1 - bw / 2.0) * ss],
-            radius=int(round(max(0.0, rad - bw / 2.0) * ss)), fill=(0, 0, 0, 0))
+            [(x0 + inner) * ss, (y0 + inner) * ss,
+             (x1 - inner) * ss, (y1 - inner) * ss],
+            radius=int(round(max(0.0, rad - inner) * ss)), fill=(0, 0, 0, 0))
         ccx, ccy = (x1 - rad) * ss, (y1 - rad) * ss
         td.rectangle([0, 0, ccx, tmp.size[1]], fill=(0, 0, 0, 0))
         td.rectangle([0, 0, tmp.size[0], ccy], fill=(0, 0, 0, 0))

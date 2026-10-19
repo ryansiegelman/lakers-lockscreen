@@ -132,7 +132,7 @@ class Layout:
     logo_aspect: float = 2.650          # chip width / height
     logo_border: float = 0.065          # white stroke
     logo_radius: float = 0.440          # corner radius
-    logo_stack: bool = True             # draw the offset stroke behind
+    logo_stack: bool = False             # draw the offset stroke behind
     logo_offset: float = 0.084          # offset stroke, same on both axes
     logo_disc: float = 0.619            # white disc diameter
     logo_disc_cx: float = 0.191         # disc centre, of chip width

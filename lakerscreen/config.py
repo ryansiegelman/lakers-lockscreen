@@ -134,6 +134,9 @@ class Layout:
     logo_radius: float = 0.440          # corner radius
     logo_stack: bool = False             # draw the offset stroke behind
     logo_offset: float = 0.084          # offset stroke, same on both axes
+    logo_code_fit: float = 0.620        # share of the disc's inner width the code may span
+    logo_disc_invert: bool = True       # dark disc, white keyline, white code
+    logo_disc_border: float = 0.045     # that keyline, of disc diameter
     logo_disc: float = 0.619            # white disc diameter
     logo_disc_cx: float = 0.191         # disc centre, of chip width
     logo_text_cx: float = 0.622         # text block centre, of chip width

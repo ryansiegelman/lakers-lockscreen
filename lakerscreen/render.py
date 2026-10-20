@@ -488,14 +488,24 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         od = d + 2.0 * h * lay.logo_ring_w
         c.rounded_rect((dcx - od / 2.0, dcy - od / 2.0, dcx + od / 2.0, dcy + od / 2.0),
                        od / 2.0, fill=accent)
-    c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
-                   d / 2.0, fill=pal.chip_border)
+    if lay.logo_disc_invert:
+        # Dark disc, thin white keyline, white letters.
+        c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
+                       d / 2.0, fill=pal.chip_fill,
+                       outline=pal.chip_border, width=d * lay.logo_disc_border)
+    else:
+        c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
+                       d / 2.0, fill=pal.chip_border)
     csz = h * lay.logo_code
     cfont = assets.font_file(lay.logo_code_font, int(round(csz * c.ss))) or c.font(csz)
-    while c.text_width(g.opponent, cfont, 0) > d * 0.74 and csz > 4:
+    # Measure against the disc's inner edge: with a keyline the usable width is
+    # smaller than the disc, and the code was sitting on the line.
+    inner_d = d - 2.0 * (d * lay.logo_disc_border if lay.logo_disc_invert else 0.0)
+    while c.text_width(g.opponent, cfont, 0) > inner_d * lay.logo_code_fit and csz > 4:
         csz *= 0.94
         cfont = assets.font_file(lay.logo_code_font, int(round(csz * c.ss))) or c.font(csz)
-    c.text((dcx, dcy), g.opponent, cfont, pal.badge_text, anchor="mc")
+    c.text((dcx, dcy), g.opponent, cfont,
+           pal.text if lay.logo_disc_invert else pal.badge_text, anchor="mc")
 
     # Date over time, both the same size, centred as a block.
     tsz = h * lay.logo_type

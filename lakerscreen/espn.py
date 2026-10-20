@@ -56,6 +56,7 @@ class Game:
     season: int
     season_type: int
     logo: Optional[str] = None
+    crest: Optional[str] = None
 
     @property
     def month_key(self) -> str:
@@ -151,12 +152,13 @@ def _parse_event(ev: dict, team_abbr: str, tz, season: int, seasontype: int) -> 
             won = ts > os_
 
     them_team = them.get("team") or {}
-    logo = None
+    logo = crest = None
     for lg in them_team.get("logos") or []:
         rels = lg.get("rel") or []
-        if "default" in rels and "dark" not in rels:
+        if "secondary_logo_white" in rels:
+            crest = lg.get("href")
+        if "default" in rels and "dark" not in rels and logo is None:
             logo = lg.get("href")
-            break
     raw = them_team.get("abbreviation", "???").upper()
     return Game(
         event_id=str(ev.get("id")),
@@ -172,6 +174,7 @@ def _parse_event(ev: dict, team_abbr: str, tz, season: int, seasontype: int) -> 
         season=season,
         season_type=seasontype,
         logo=logo,
+        crest=crest,
     )
 
 

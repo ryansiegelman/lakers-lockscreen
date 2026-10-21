@@ -825,7 +825,8 @@ def build(cfg: Config, ttl: Optional[int] = None
         scale = _type_scale(c, cfg, col_w, chip_h, shown, tag_w)
         line_target = _line_target(c, cfg, col_w, chip_h, shown, scale, tag_w, games)
         for i, g in enumerate(shown):
-            row, col = divmod(i, cols)            # row-major: L, R, L, R ...
+            col, row = divmod(i, rows)            # column-major: the whole left
+                                                  # column, then the whole right
             x0 = col_x[col]
             y0 = start_y + row * pitch + (pitch - chip_h) / 2.0
             if cfg.chip_style == "logo":

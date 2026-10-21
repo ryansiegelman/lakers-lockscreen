@@ -136,6 +136,16 @@ class Layout:
     logo_offset: float = 0.084          # offset stroke, same on both axes
     logo_disc_mode: str = "crest"       # crest | code
     logo_crest_fit: float = 0.780       # crest size inside the disc
+    crest_dir: str = "assets/crests"    # hand-picked per-team marks, white on transparent
+    # Per-team overrides for the crest in the disc. "fit" replaces logo_crest_fit;
+    # "dx"/"dy" nudge the mark, as a share of the disc diameter.
+    crest_tune: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
+        "BKN": {"fit": 0.66},
+        "CHA": {"fit": 0.66},
+        "DET": {"fit": 0.66, "dx": -0.04},
+        "IND": {"fit": 0.66},
+        "POR": {"fit": 0.66},
+    })
     logo_code_fit: float = 0.620        # share of the disc's inner width the code may span
     logo_disc_invert: bool = True       # dark disc, white keyline, white code
     logo_disc_border: float = 0.045     # that keyline, of disc diameter

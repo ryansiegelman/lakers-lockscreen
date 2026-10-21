@@ -497,14 +497,20 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
                        d / 2.0, fill=pal.chip_border)
     drawn = False
-    if lay.logo_disc_mode == "crest" and g.crest:
-        crest = assets.remote_image(g.crest)
+    if lay.logo_disc_mode == "crest":
+        # A hand-picked mark on disk wins; ESPN's secondary is the fallback.
+        tune = lay.crest_tune.get(g.opponent.upper(), {})
+        crest = assets.crest_image(g.opponent, lay.crest_dir)
+        if crest is None and g.crest:
+            crest = assets.remote_image(g.crest)
         if crest is not None:
             # Fit inside the keyline by whichever dimension binds.
             inner_d = d - 2.0 * (d * lay.logo_disc_border if lay.logo_disc_invert else 0.0)
-            room = inner_d * lay.logo_crest_fit
+            room = inner_d * tune.get("fit", lay.logo_crest_fit)
             k = min(room / crest.width, room / crest.height)
-            c.paste_centered(crest, (dcx, dcy), crest.width * k)
+            c.paste_centered(crest,
+                             (dcx + d * tune.get("dx", 0.0), dcy + d * tune.get("dy", 0.0)),
+                             crest.width * k)
             drawn = True
 
     if not drawn:

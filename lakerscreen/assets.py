@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import requests
@@ -297,3 +297,35 @@ def font_file(path: str, size: int) -> Optional[ImageFont.FreeTypeFont]:
         return ImageFont.truetype(cand, max(1, int(size)))
     except Exception:
         return None
+
+
+# ESPN spells a few teams differently in the schedule than in its team list;
+# the crest files use the schedule spelling, and this maps the other one onto it.
+CREST_ALIASES: Dict[str, str] = {
+    "GS": "GSW", "NO": "NOL", "NY": "NYK", "PHX": "PHO",
+    "SA": "SAS", "UTAH": "UTA", "WSH": "WAS",
+}
+
+
+@lru_cache(maxsize=64)
+def crest_image(abbr: str, directory: str = "assets/crests") -> Optional[Image.Image]:
+    """Load a hand-picked opponent crest from disk, trimmed to its ink bounds.
+
+    These are the marks chosen per team in the crest picker: already white, on a
+    transparent ground, so they drop straight into the dark disc. Returns None
+    when a team has no file, which lets the caller fall back to ESPN's artwork.
+    """
+    base = directory if os.path.isabs(directory) else os.path.join(ROOT, directory)
+    key = abbr.upper()
+    path = os.path.join(base, "%s.png" % key)
+    if not os.path.exists(path):
+        alias = CREST_ALIASES.get(key)
+        path = os.path.join(base, "%s.png" % alias) if alias else path
+    if not os.path.exists(path):
+        return None
+    try:
+        img = Image.open(path).convert("RGBA")
+    except Exception:
+        return None
+    bbox = img.getchannel("A").getbbox()
+    return img.crop(bbox) if bbox else img

@@ -532,7 +532,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
                 # The zone's width relative to chip height differs between a
                 # one- and two-column month, so a bleed baked for one crops the
                 # mark in the other. Hold it to what the zone can actually take.
-                room = w * lay.logo_bare_zone
+                room = w * tune.get("zone", lay.logo_bare_zone)
                 size = min(size, room * crest.height / crest.width)
             k = (size / crest.height if lay.logo_bare_fill_height and not lay.logo_bare_ring
                  else size / max(crest.width, crest.height))
@@ -550,7 +550,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
             if lay.logo_bare_fill_height and not lay.logo_bare_ring:
                 # Crop the width to the crest's own zone, the way the chip's
                 # top and bottom crop its height.
-                md.rectangle([(x0 + w * lay.logo_bare_zone) * ss, 0,
+                md.rectangle([(x0 + w * tune.get("zone", lay.logo_bare_zone)) * ss, 0,
                               c.layer.size[0], c.layer.size[1]], fill=0)
             tmp.putalpha(ImageChops.multiply(tmp.getchannel("A"), mask))
             c.layer.alpha_composite(tmp)
@@ -607,7 +607,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         # Centre the block in whatever the crest leaves, rather than at a fixed
         # fraction of the chip: off-centre, one side runs out first and caps the
         # type well before the other side is full.
-        lo = (x0 + w * lay.logo_bare_zone if lay.logo_bare_fill_height
+        lo = (x0 + w * tune.get("zone", lay.logo_bare_zone) if lay.logo_bare_fill_height
               and not lay.logo_bare_ring else dcx + d / 2.0) + w * lay.logo_bare_gap_l
         hi = x1 - w * lay.logo_bare_gap_r
         tcx, room = (lo + hi) / 2.0, hi - lo

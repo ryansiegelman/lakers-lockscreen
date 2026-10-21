@@ -529,6 +529,11 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
                 size = rd * lay.logo_bare_in_ring
             else:
                 size = h * tune.get("bleed", lay.logo_bare_size)
+                # The zone's width relative to chip height differs between a
+                # one- and two-column month, so a bleed baked for one crops the
+                # mark in the other. Hold it to what the zone can actually take.
+                room = w * lay.logo_bare_zone
+                size = min(size, room * crest.height / crest.width)
             k = (size / crest.height if lay.logo_bare_fill_height and not lay.logo_bare_ring
                  else size / max(crest.width, crest.height))
             cw_, ch_ = max(1, int(crest.width * k * ss)), max(1, int(crest.height * k * ss))

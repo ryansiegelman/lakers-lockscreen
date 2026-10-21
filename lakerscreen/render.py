@@ -811,8 +811,15 @@ def build(cfg: Config, ttl: Optional[int] = None
             col_w = W * lay.single_col_width
             col_x = ((W - col_w) / 2.0,)
         else:
-            col_w = W * (1 - 2 * lay.side_margin - lay.column_gutter) / 2.0
-            col_x = (W * lay.side_margin, W * lay.side_margin + col_w + W * lay.column_gutter)
+            # Fill the width the margins allow, but never past the card's own
+            # proportions: a chip stretched wider than logo_aspect stops looking
+            # like the reference. Whatever is left over is split evenly, so the
+            # pair stays centred however the two limits land.
+            avail = W * (1 - 2 * lay.side_margin - lay.column_gutter) / 2.0
+            col_w = min(avail, chip_h * lay.logo_aspect) if cfg.chip_style == "logo" else avail
+            gutter = W * lay.column_gutter
+            left = (W - (2 * col_w + gutter)) / 2.0
+            col_x = (left, left + col_w + gutter)
 
         tag_w, tag_h_px, tag_letter_px = _tag_metrics(c, cfg, chip_h, shown)
         scale = _type_scale(c, cfg, col_w, chip_h, shown, tag_w)

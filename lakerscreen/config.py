@@ -56,14 +56,14 @@ class Layout:
     # Vertical band the two-column grid may occupy (below clock, above footer).
     # Every value below was measured off the reference lock screen at 1206x2622.
     grid_top: float = 0.2700
-    grid_bottom: float = 0.8700
+    grid_bottom: float = 0.8800
     # Horizontal geometry.
-    side_margin: float = 0.1450         # fraction of width
-    column_gutter: float = 0.0550       # fraction of width
+    side_margin: float = 0.0450         # fraction of width; two-column mode only
+    column_gutter: float = 0.0300       # fraction of width
     # Chip proportions.
     max_pitch: float = 0.1050           # row-to-row spacing cap, of image height
     single_col_width: float = 0.4975    # chip width in single-column mode, of image width
-    chip_height_ratio: float = 0.8700    # of the per-row pitch
+    chip_height_ratio: float = 0.9200    # of the per-row pitch
     chip_max_height: float = 0.0864     # of image height, caps chips in light months
     corner_radius_ratio: float = 0.3200   # of chip height
     border_ratio: float = 0.0300         # of chip height

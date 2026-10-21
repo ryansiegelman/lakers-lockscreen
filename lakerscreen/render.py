@@ -6,7 +6,7 @@ import math
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 try:
     from zoneinfo import ZoneInfo
@@ -213,6 +213,11 @@ def _fmt_date_style(g: Game, style: str) -> str:
         return "%s, %s" % (wd, g.start_local.strftime("%-d"))
     if style == "nameless":
         return g.start_local.strftime("%-m/%-d")
+    if style == "mini":
+        # One letter where it is unambiguous, two where it is not.
+        short = {"MON": "M", "TUE": "T", "WED": "W", "THU": "TH",
+                 "FRI": "F", "SAT": "SA", "SUN": "SU"}[wd]
+        return "%s, %s" % (short, g.start_local.strftime("%-m/%-d"))
     return "%s, %s" % (wd, g.start_local.strftime("%-m/%-d"))
 
 
@@ -480,16 +485,19 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         td.rectangle([0, 0, tmp.size[0], ccy], fill=(0, 0, 0, 0))
         c.layer.alpha_composite(tmp)
 
-    # White disc with the team code.
-    d = h * lay.logo_disc
-    dcx, dcy = x0 + w * lay.logo_disc_cx, (y0 + y1) / 2.0
+    # The disc, unless the crest is standing on its own.
+    bare = lay.logo_bare
+    d = h * (lay.logo_bare_size if bare else lay.logo_disc)
+    dcx, dcy = x0 + w * (lay.logo_bare_cx if bare else lay.logo_disc_cx), (y0 + y1) / 2.0
     if lay.logo_accent == "ring":
         # Home/away reads as a colour ring around the disc.
         od = d + 2.0 * h * lay.logo_ring_w
         c.rounded_rect((dcx - od / 2.0, dcy - od / 2.0, dcx + od / 2.0, dcy + od / 2.0),
                        od / 2.0, fill=accent)
-    as_disc = lay.crest_as_disc.get(g.opponent.upper())
-    if lay.logo_disc_invert:
+    as_disc = None if bare else lay.crest_as_disc.get(g.opponent.upper())
+    if bare:
+        pass                      # no disc: the mark is the whole left zone
+    elif lay.logo_disc_invert:
         # Dark disc, thin white keyline, white letters.
         c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
                        d / 2.0, fill=pal.chip_fill,
@@ -504,7 +512,45 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         crest = assets.crest_image(g.opponent, lay.crest_dir)
         if crest is None and g.crest:
             crest = assets.remote_image(g.crest)
-        if crest is not None and as_disc:
+        if crest is not None and bare:
+            # Deliberately oversized: the mark runs past the chip's edges and is
+            # cut by them, so it reads as a crop of the logo rather than a logo
+            # placed inside a box. Clipped to the chip's inner edge so it never
+            # spills onto the wallpaper.
+            ss = c.ss
+            tmp = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
+            if lay.logo_bare_ring > 0:
+                rd = h * lay.logo_bare_ring
+                rw = max(1, int(round(rd * lay.logo_bare_ring_w * ss)))
+                ImageDraw.Draw(tmp).ellipse(
+                    [(dcx - rd / 2.0) * ss, (dcy - rd / 2.0) * ss,
+                     (dcx + rd / 2.0) * ss, (dcy + rd / 2.0) * ss],
+                    outline=pal.chip_border, width=rw)
+                size = rd * lay.logo_bare_in_ring
+            else:
+                size = h * tune.get("bleed", lay.logo_bare_size)
+            k = (size / crest.height if lay.logo_bare_fill_height and not lay.logo_bare_ring
+                 else size / max(crest.width, crest.height))
+            cw_, ch_ = max(1, int(crest.width * k * ss)), max(1, int(crest.height * k * ss))
+            m = crest.resize((cw_, ch_), Image.LANCZOS)
+            tmp.alpha_composite(
+                m, (int(round((dcx + d * tune.get("dx", 0.0)) * ss - cw_ / 2.0)),
+                    int(round((dcy + h * tune.get("dy", 0.0)) * ss - ch_ / 2.0))))
+            mask = Image.new("L", c.layer.size, 0)
+            inset = bw * 0.5
+            md = ImageDraw.Draw(mask)
+            md.rounded_rectangle(
+                [(x0 + inset) * ss, (y0 + inset) * ss, (x1 - inset) * ss, (y1 - inset) * ss],
+                radius=int(round(max(0.0, rad - inset) * ss)), fill=255)
+            if lay.logo_bare_fill_height and not lay.logo_bare_ring:
+                # Crop the width to the crest's own zone, the way the chip's
+                # top and bottom crop its height.
+                md.rectangle([(x0 + w * lay.logo_bare_zone) * ss, 0,
+                              c.layer.size[0], c.layer.size[1]], fill=0)
+            tmp.putalpha(ImageChops.multiply(tmp.getchannel("A"), mask))
+            c.layer.alpha_composite(tmp)
+            drawn = True
+        elif crest is not None and as_disc:
             # Size by how far the ink reaches, so the mark's own rim lands on the
             # disc's rim however wide or tall its bounding box happens to be.
             k = (d / 2.0) * as_disc / assets.ink_radius(crest)
@@ -514,8 +560,9 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
             drawn = True
         elif crest is not None:
             # Fit inside the keyline by whichever dimension binds.
-            inner_d = d - 2.0 * (d * lay.logo_disc_border if lay.logo_disc_invert else 0.0)
-            room = inner_d * tune.get("fit", lay.logo_crest_fit)
+            inner_d = d if bare else d - 2.0 * (
+                d * lay.logo_disc_border if lay.logo_disc_invert else 0.0)
+            room = inner_d * (1.0 if bare else tune.get("fit", lay.logo_crest_fit))
             k = min(room / crest.width, room / crest.height)
             c.paste_centered(crest,
                              (dcx + d * tune.get("dx", 0.0), dcy + d * tune.get("dy", 0.0)),
@@ -534,7 +581,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
                pal.text if lay.logo_disc_invert else pal.badge_text, anchor="mc")
 
     # Date over time, both the same size, centred as a block.
-    tsz = h * lay.logo_type
+    tsz = h * (lay.logo_bare_type if bare else lay.logo_type)
     font = c.font(tsz)
     top_txt = _fmt_date_style(g, cfg.date_format)
     result_mark = result_score = None
@@ -545,39 +592,78 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     elif g.state == "in":
         bot_txt = "LIVE"
     else:
-        bot_txt = g.start_local.strftime("%-I:%M%p").upper()
+        bot_txt = (g.start_local.strftime("%-I%p") if lay.time_compact
+                   and g.start_local.minute == 0
+                   else g.start_local.strftime("%-I:%M%p")).upper()
 
     # October's dates run longer than the reference's; shrink rather than let
     # them crowd the disc.
-    tcx = x0 + w * lay.logo_text_cx
-    room = 2.0 * min(tcx - (dcx + d / 2.0 + w * lay.logo_text_gap),
-                     (x1 - w * lay.logo_text_gap) - tcx)
+    if bare:
+        # Centre the block in whatever the crest leaves, rather than at a fixed
+        # fraction of the chip: off-centre, one side runs out first and caps the
+        # type well before the other side is full.
+        lo = (x0 + w * lay.logo_bare_zone if lay.logo_bare_fill_height
+              and not lay.logo_bare_ring else dcx + d / 2.0) + w * lay.logo_bare_gap_l
+        hi = x1 - w * lay.logo_bare_gap_r
+        tcx, room = (lo + hi) / 2.0, hi - lo
+    else:
+        tcx = x0 + w * lay.logo_text_cx
+        room = 2.0 * min(tcx - (dcx + d / 2.0 + w * lay.logo_text_gap),
+                         (x1 - w * lay.logo_text_gap) - tcx)
     widest = max(c.text_width(top_txt, font, 0), c.text_width(bot_txt, font, 0))
     if widest > room > 0:
         tsz *= room / widest
         font = c.font(tsz)
 
-    c.text((tcx, y0 + h * lay.logo_line1), top_txt, font, pal.text, anchor="mc")
+    # Both lines are set to the same width: the narrower one is tracked out to
+    # meet the wider, so the block reads as a justified pair rather than two
+    # centred lines of whatever length the date happened to be.
+    msz = tsz * lay.logo_mark_size
+    mfont = (assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
+             if result_mark else None)
+    mark_gap = tsz * lay.logo_mark_gap
+    slot = (max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0))
+            if result_mark else 0.0)
 
+    w_top = c.text_width(top_txt, font, 0)
     if result_mark:
-        # W/L set smaller but in a heavier weight, held off the score.
-        msz = tsz * lay.logo_mark_size
-        mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
-        gap = tsz * lay.logo_mark_gap
-        sw = c.text_width(result_score, font, 0)
-        yb = y0 + h * lay.logo_line2
-
-        # Fixed slot sized to the wider of the two letters, so a W and an L
-        # give the same total and the score lands at the same x either way.
-        # The mark is right-aligned in that slot: centred, a narrow L would
-        # float further from the figure than a wide W.
-        slot = max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0))
-        start = tcx - (slot + gap + sw) / 2.0
-        c.text((start + slot, yb), result_mark, mfont, pal.text, anchor="rc")
-        c.text((start + slot + gap, yb), result_score, font, pal.text, anchor="lc")
-
+        w_bot = slot + mark_gap + c.text_width(result_score, font, 0)
     else:
-        c.text((tcx, y0 + h * lay.logo_line2), bot_txt, font, pal.text, anchor="mc")
+        w_bot = c.text_width(bot_txt, font, 0)
+    target = max(w_top, w_bot)
+
+    # Closing the gap by letter spacing alone pulls a short line apart - a time
+    # set against a wide date ends up as "7 : 0 0 P M". So the narrower line is
+    # set larger first, up to a limit, and only the remainder becomes tracking.
+    def _fit(text, natural):
+        """Return (font, tracking) that set `text` to `target`."""
+        if natural <= 0 or target <= natural:
+            return font, 0.0
+        grow = min(target / natural, lay.logo_line_grow_max)
+        f = c.font(tsz * grow) if grow > 1.0 else font
+        wide = c.text_width(text, f, 0)
+        n = len(text) - 1
+        return f, ((target - wide) / n if n > 0 else 0.0)
+
+    f_top, tr_top = _fit(top_txt, w_top)
+    c.text((tcx, y0 + h * lay.logo_line1), top_txt, f_top, pal.text,
+           tracking=tr_top, anchor="mc")
+
+    yb = y0 + h * lay.logo_line2
+    if result_mark:
+        # The slack goes into the score's letters and into the gap before it,
+        # so the W/L keeps its shape and the pair still starts and ends flush.
+        sw = c.text_width(result_score, font, 0)
+        n = len(result_score) - 1
+        tr = ((target - w_bot) / n if n > 0 else 0.0)
+        gap = mark_gap + tr
+        start = tcx - (slot + gap + sw + tr * n) / 2.0
+        c.text((start + slot, yb), result_mark, mfont, pal.text, anchor="rc")
+        c.text((start + slot + gap, yb), result_score, font, pal.text,
+               tracking=tr, anchor="lc")
+    else:
+        f_bot, tr_bot = _fit(bot_txt, w_bot)
+        c.text((tcx, yb), bot_txt, f_bot, pal.text, tracking=tr_bot, anchor="mc")
 
 
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
@@ -816,7 +902,7 @@ def build(cfg: Config, ttl: Optional[int] = None
             # like the reference. Whatever is left over is split evenly, so the
             # pair stays centred however the two limits land.
             avail = W * (1 - 2 * lay.side_margin - lay.column_gutter) / 2.0
-            col_w = min(avail, chip_h * lay.logo_aspect) if cfg.chip_style == "logo" else avail
+            col_w = min(avail, chip_h * lay.chip_aspect_max) if cfg.chip_style == "logo" else avail
             gutter = W * lay.column_gutter
             left = (W - (2 * col_w + gutter)) / 2.0
             col_x = (left, left + col_w + gutter)

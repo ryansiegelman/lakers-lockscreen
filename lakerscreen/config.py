@@ -130,6 +130,8 @@ class Layout:
     # "logo" chip style. Every value measured off the supplied reference card
     # (410x155 px), expressed against chip height unless noted.
     logo_aspect: float = 2.650          # chip width / height
+    chip_aspect_max: float = 3.050      # how long a two-column chip may run
+                                        # before it stops widening
     logo_border: float = 0.065          # white stroke
     logo_radius: float = 0.440          # corner radius
     logo_stack: bool = False             # draw the offset stroke behind
@@ -140,18 +142,35 @@ class Layout:
     # Per-team overrides for the crest in the disc. "fit" replaces logo_crest_fit;
     # "dx"/"dy" nudge the mark, as a share of the disc diameter.
     crest_tune: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
+        "ATL": {"bleed": 1.177},
         "BKN": {"fit": 0.58},
         "BOS": {"fit": 0.66},
-        "CHA": {"fit": 0.66},
-        "CHI": {"fit": 0.66},
-        "CLE": {"fit": 0.62},
-        "DET": {"fit": 0.66, "dx": -0.04},
-        "IND": {"fit": 0.58},
-        "MIA": {"fit": 0.68},
-        "NYK": {"fit": 0.66},
-        "POR": {"fit": 0.66},
-        "SAS": {"fit": 0.66},
-        "WAS": {"fit": 0.72},
+        "CHA": {"fit": 0.66, "bleed": 1.177, "dy": -0.07},
+        "CHI": {"fit": 0.66, "bleed": 1.042},
+        "CLE": {"fit": 0.62, "bleed": 0.826},
+        "DAL": {"dx": 0.13},
+        "DEN": {"bleed": 0.756},
+        "DET": {"fit": 0.66, "dy": 0.15, "dx": -0.04},
+        "GSW": {"bleed": 1.128},
+        "HOU": {"dy": 0.15},
+        "IND": {"fit": 0.58, "bleed": 0.85},
+        "LAC": {"bleed": 1.0},
+        "MEM": {"dx": -0.07},
+        "MIA": {"fit": 0.68, "bleed": 1.0, "dx": 0.06},
+        "MIL": {"dx": 0.07},
+        "MIN": {"bleed": 1.2, "dy": 0.07},
+        "NOL": {"bleed": 1.2},
+        "OKC": {"bleed": 0.653},
+        "NYK": {"fit": 0.66, "bleed": 1.0},
+        "ORL": {"bleed": 0.818, "dy": -0.07},
+        "PHI": {"bleed": 1.0},
+        "PHO": {"bleed": 0.939, "dy": 0.07},
+        "POR": {"fit": 0.66, "bleed": 1.2},
+        "SAC": {"bleed": 0.792, "dy": 0.07},
+        "SAS": {"fit": 0.66, "bleed": 1.0, "dy": 0.07},
+        "TOR": {"bleed": 0.708, "dy": 0.08},
+        "UTA": {"bleed": 0.746, "dy": 0.07},
+        "WAS": {"fit": 0.72, "bleed": 1.0, "dx": -0.06},
     })
     # Marks that are already a ring. The chip's own keyline is still drawn, and
     # sits over the mark's thinner ring, so every chip's border matches while the
@@ -163,6 +182,38 @@ class Layout:
     logo_code_fit: float = 0.620        # share of the disc's inner width the code may span
     logo_disc_invert: bool = True       # dark disc, white keyline, white code
     logo_disc_border: float = 0.045     # that keyline, of disc diameter
+    # "bare" crest: no disc at all. The circle costs roughly a third of the
+    # chip's width in padding alone, so dropping it and shortening the date
+    # lets the mark itself grow by about 1.8x.
+    logo_bare: bool = True
+    logo_bare_size: float = 1.200       # crest's long side, of chip height;
+                                        # over 1.0 it runs past the chip edges
+    logo_bare_cx: float = 0.185         # crest centre, of chip width
+    # A thin ring around the mark, so a shape like the Jazz note reads as
+    # round the way the Warriors and Blazers marks already do. 0 turns it
+    # off. The stroke is 2.66% of the ring's diameter, measured off the
+    # Warriors' own ring so it matches a mark that came with one.
+    # Sizing the mark by its long side leaves a wide logo sitting small with
+    # air around it while a tall one overflows and gets cut. Driving off the
+    # height instead makes every mark overflow, and a fixed zone crops the
+    # width, so all 29 are cut the same way.
+    logo_bare_fill_height: bool = True
+    logo_bare_zone: float = 0.370       # the crest's share of chip width
+    logo_bare_ring: float = 0.000       # ring diameter, of chip height
+    logo_bare_ring_w: float = 0.0266    # stroke, of ring diameter
+    logo_bare_in_ring: float = 0.860    # crest size inside the ring
+    logo_bare_text_cx: float = 0.655    # unused when bare: the block centres
+                                        # itself in the space the crest leaves
+    logo_bare_type: float = 0.300       # date and time when bare, of chip height
+    # Clearance either side of the text when bare. Asymmetric on purpose:
+    # the left side only has to clear a graphic, the right is the chip's
+    # own edge and the colour cling, so it wants more air.
+    logo_bare_gap_l: float = 0.045      # of chip width
+    logo_bare_gap_r: float = 0.075
+    logo_line_grow_max: float = 1.000   # how much larger the shorter of the
+                                        # two lines may be set to reach the
+                                        # other's width before tracking takes over
+    time_compact: bool = False          # 4PM rather than 4:00PM on the hour
     logo_disc: float = 0.619            # white disc diameter
     logo_disc_cx: float = 0.191         # disc centre, of chip width
     logo_text_cx: float = 0.622         # text block centre, of chip width

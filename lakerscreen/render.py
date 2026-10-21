@@ -488,7 +488,12 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         od = d + 2.0 * h * lay.logo_ring_w
         c.rounded_rect((dcx - od / 2.0, dcy - od / 2.0, dcx + od / 2.0, dcy + od / 2.0),
                        od / 2.0, fill=accent)
-    if lay.logo_disc_invert:
+    as_disc = lay.crest_as_disc.get(g.opponent.upper())
+    if as_disc and assets.crest_image(g.opponent, lay.crest_dir) is not None:
+        # The mark is already a ring, so it serves as the keyline: fill only.
+        c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
+                       d / 2.0, fill=pal.chip_fill)
+    elif lay.logo_disc_invert:
         # Dark disc, thin white keyline, white letters.
         c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
                        d / 2.0, fill=pal.chip_fill,
@@ -503,7 +508,15 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         crest = assets.crest_image(g.opponent, lay.crest_dir)
         if crest is None and g.crest:
             crest = assets.remote_image(g.crest)
-        if crest is not None:
+        if crest is not None and as_disc:
+            # Size by how far the ink reaches, so the mark's own rim lands on the
+            # disc's rim however wide or tall its bounding box happens to be.
+            k = (d / 2.0) * as_disc / assets.ink_radius(crest)
+            c.paste_centered(crest,
+                             (dcx + d * tune.get("dx", 0.0), dcy + d * tune.get("dy", 0.0)),
+                             crest.width * k)
+            drawn = True
+        elif crest is not None:
             # Fit inside the keyline by whichever dimension binds.
             inner_d = d - 2.0 * (d * lay.logo_disc_border if lay.logo_disc_invert else 0.0)
             room = inner_d * tune.get("fit", lay.logo_crest_fit)

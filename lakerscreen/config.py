@@ -140,11 +140,24 @@ class Layout:
     # Per-team overrides for the crest in the disc. "fit" replaces logo_crest_fit;
     # "dx"/"dy" nudge the mark, as a share of the disc diameter.
     crest_tune: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
-        "BKN": {"fit": 0.66},
+        "BKN": {"fit": 0.58},
+        "BOS": {"fit": 0.66},
         "CHA": {"fit": 0.66},
+        "CHI": {"fit": 0.66},
         "DET": {"fit": 0.66, "dx": -0.04},
-        "IND": {"fit": 0.66},
+        "IND": {"fit": 0.58},
+        "MIA": {"fit": 0.68},
+        "NYK": {"fit": 0.66},
         "POR": {"fit": 0.66},
+        "SAS": {"fit": 0.66},
+    })
+    # Marks that are already a ring: they stand in for the disc's keyline, so the
+    # disc is drawn as fill only and the mark is sized by its radius to land on
+    # the rim. The value is how much of the radius it fills.
+    crest_as_disc: Dict[str, float] = field(default_factory=lambda: {
+        "WAS": 0.94,
+        "LAC": 0.94,
+        "GSW": 0.94,
     })
     logo_code_fit: float = 0.620        # share of the disc's inner width the code may span
     logo_disc_invert: bool = True       # dark disc, white keyline, white code

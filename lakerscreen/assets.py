@@ -1,6 +1,7 @@
 """Font resolution, letter-spaced text drawing, and team-logo caching."""
 from __future__ import annotations
 
+import math
 import os
 from functools import lru_cache
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -329,3 +330,23 @@ def crest_image(abbr: str, directory: str = "assets/crests") -> Optional[Image.I
         return None
     bbox = img.getchannel("A").getbbox()
     return img.crop(bbox) if bbox else img
+
+
+def ink_radius(img: Image.Image, step: int = 2) -> float:
+    """How far the mark's ink reaches from its centre, in its own pixels.
+
+    A bounding box is the wrong measure against a round disc: it sizes a wide
+    mark and a square one differently, and pushes a wide mark's corners outside
+    the circle. Radial extent is what decides whether a ring lands on the rim.
+    """
+    a = img.getchannel("A").load()
+    w, h = img.size
+    cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
+    best = 0.0
+    for y in range(0, h, step):
+        for x in range(0, w, step):
+            if a[x, y] > 110:
+                d = (x - cx) ** 2 + (y - cy) ** 2
+                if d > best:
+                    best = d
+    return math.sqrt(best) or 1.0

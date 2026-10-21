@@ -30,15 +30,21 @@ jobs:
           "https://github.com/google/fonts/raw/main/ofl/oswald/Oswald%5Bwght%5D.ttf"
 
       - name: Render
+        # PIN_MONTH pins the wallpaper to one month (YYYY-MM) for previewing a
+        # month that is not the current one. Unset the repository variable and
+        # the next run goes back to tracking today's month on its own.
         run: |
           python generate.py \
+            ${PIN_MONTH:+--month "$PIN_MONTH"} \
             --device "${DEVICE:-iphone-17-pro}" \
             --font oswald.ttf \
             --font-variation Bold --font-variation-light Regular \
             --ttl 0 \
             -o docs/wallpaper.png
+          echo "rendered ${PIN_MONTH:-current month}"
         env:
           DEVICE: ${{ vars.DEVICE }}
+          PIN_MONTH: ${{ vars.PIN_MONTH }}
 
       - name: Commit if changed
         run: |

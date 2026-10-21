@@ -489,11 +489,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         c.rounded_rect((dcx - od / 2.0, dcy - od / 2.0, dcx + od / 2.0, dcy + od / 2.0),
                        od / 2.0, fill=accent)
     as_disc = lay.crest_as_disc.get(g.opponent.upper())
-    if as_disc and assets.crest_image(g.opponent, lay.crest_dir) is not None:
-        # The mark is already a ring, so it serves as the keyline: fill only.
-        c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
-                       d / 2.0, fill=pal.chip_fill)
-    elif lay.logo_disc_invert:
+    if lay.logo_disc_invert:
         # Dark disc, thin white keyline, white letters.
         c.rounded_rect((dcx - d / 2.0, dcy - d / 2.0, dcx + d / 2.0, dcy + d / 2.0),
                        d / 2.0, fill=pal.chip_fill,

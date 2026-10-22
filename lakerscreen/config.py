@@ -151,7 +151,7 @@ class Layout:
         "DAL": {},
         "DEN": {},
         "DET": {"fit": 0.66, "dy": 0.22},
-        "GSW": {},
+        "GSW": {"bleed": 0.985},
         "HOU": {"dy": 0.15},
         "IND": {"fit": 0.58},
         "LAC": {},

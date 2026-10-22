@@ -529,9 +529,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         # chip's own border and that stroke.
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
                        fill=None, outline=pal.chip_border, width=bw)
-    elif lay.logo_accent == "corner" and not (played and lay.played_drop_accent):
-        # Home or away stops mattering once the game is played; the result
-        # is the only thing left worth saying.
+    elif lay.logo_accent == "corner":
         # The chip border and the offset stroke are circles about different
         # centres, so no single arc follows both: sized to the 45 degree gap it
         # overshoots at the ends, sized to the ends it leaves the outer line
@@ -550,7 +548,10 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             [(x0 + ox - bleed) * ss, (y0 + ox - bleed) * ss,
              (x1 + ox + bleed) * ss, (y1 + ox + bleed) * ss],
             radius=int(round((rad + bleed) * ss)), fill=accent)
-        inner = bw + bleed               # erase BEYOND the stroke, not into it
+        # On a played chip the band matches that chip's hairline, so the colour
+        # reads as part of the same thinner frame rather than a leftover.
+        aw = h * lay.played_hairline if quiet else bw
+        inner = aw + bleed               # erase BEYOND the stroke, not into it
         td.rounded_rectangle(
             [(x0 + inner) * ss, (y0 + inner) * ss,
              (x1 - inner) * ss, (y1 - inner) * ss],
@@ -764,10 +765,13 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         # The slack is shared by the score's own letter gaps and the gap after
         # the W, so it divides by one more than the letter gaps. Dividing by the
         # letter gaps alone made this line overshoot every other one.
-        n = len(result_score) - 1
-        tr = ((target - w_bot) / (n + 1)) if n >= 0 else 0.0
-        gap = mark_gap + tr
-        start = tcx - (slot + gap + sw + tr * n) / 2.0
+        # The slack opens the gap after the W rather than spacing the digits:
+        # a tracked-out score reads as a different size from the date above it.
+        tr = 0.0
+        # logo_mark_stretch opens the gap to reach the month's width; without it
+        # the W stays tight to the score and the line is simply shorter.
+        gap = mark_gap + (max(0.0, target - w_bot) if lay.logo_mark_stretch else 0.0)
+        start = tcx - (slot + gap + sw) / 2.0
         c.text((start + slot, yb), result_mark, mfont, pal.text, anchor="rc")
         c.text((start + slot + gap, yb), result_score, font, pal.text,
                tracking=tr, anchor="lc")

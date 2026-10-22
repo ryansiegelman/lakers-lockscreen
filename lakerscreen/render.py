@@ -429,6 +429,36 @@ def _ink_height(c: _Canvas, runs: Sequence[Run]) -> float:
     return bot - top
 
 
+def _logo_type_scale(c: _Canvas, cfg: Config, w: float, h: float, games) -> float:
+    """One type size for every chip in the month.
+
+    Each chip used to solve its own size against its own spare width, so a team
+    with a wider crest zone, or simply a longer date, ended up a different size
+    from its neighbour. Taking the tightest chip and applying it to all of them
+    keeps the grid even.
+    """
+    lay = cfg.layout
+    worst = 1.0
+    base = h * (lay.logo_bare_type if lay.logo_bare else lay.logo_type)
+    font = c.font(base)
+    for g in games:
+        zone = lay.crest_tune.get(g.opponent.upper(), {}).get("zone", lay.logo_bare_zone)
+        room = w * (1.0 - zone - lay.logo_bare_gap_l - lay.logo_bare_gap_r)
+        top = _fmt_date_style(g, cfg.date_format)
+        if g.completed and g.won is not None:
+            bot = "%s %s" % ("W" if g.won else "L", g.score_line)
+        elif g.state == "in":
+            bot = "LIVE"
+        else:
+            bot = (g.start_local.strftime("%-I%p") if lay.time_compact
+                   and g.start_local.minute == 0
+                   else g.start_local.strftime("%-I:%M%p")).upper()
+        widest = max(c.text_width(top, font, 0), c.text_width(bot, font, 0))
+        if widest > 0 and room > 0:
+            worst = min(worst, room / widest)
+    return worst
+
+
 def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> None:
     """Stacked card, drawn to the proportions measured off the reference."""
     lay, pal = cfg.layout, cfg.palette
@@ -586,7 +616,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
                pal.text if lay.logo_disc_invert else pal.badge_text, anchor="mc")
 
     # Date over time, both the same size, centred as a block.
-    tsz = h * (lay.logo_bare_type if bare else lay.logo_type)
+    tsz = h * (lay.logo_bare_type if bare else lay.logo_type) * scale
     font = c.font(tsz)
     top_txt = _fmt_date_style(g, cfg.date_format)
     result_mark = result_score = None
@@ -615,10 +645,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         tcx = x0 + w * lay.logo_text_cx
         room = 2.0 * min(tcx - (dcx + d / 2.0 + w * lay.logo_text_gap),
                          (x1 - w * lay.logo_text_gap) - tcx)
-    widest = max(c.text_width(top_txt, font, 0), c.text_width(bot_txt, font, 0))
-    if widest > room > 0:
-        tsz *= room / widest
-        font = c.font(tsz)
+    # No per-chip shrink: the scale above was solved across the whole month.
 
     # Both lines are set to the same width: the narrower one is tracked out to
     # meet the wider, so the block reads as a justified pair rather than two
@@ -913,7 +940,9 @@ def build(cfg: Config, ttl: Optional[int] = None
             col_x = (left, left + col_w + gutter)
 
         tag_w, tag_h_px, tag_letter_px = _tag_metrics(c, cfg, chip_h, shown)
-        scale = _type_scale(c, cfg, col_w, chip_h, shown, tag_w)
+        scale = (_logo_type_scale(c, cfg, col_w, chip_h, shown)
+                 if cfg.chip_style == "logo"
+                 else _type_scale(c, cfg, col_w, chip_h, shown, tag_w))
         line_target = _line_target(c, cfg, col_w, chip_h, shown, scale, tag_w, games)
         for i, g in enumerate(shown):
             col, row = divmod(i, rows)            # column-major: the whole left

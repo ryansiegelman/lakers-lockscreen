@@ -247,7 +247,7 @@ class Layout:
     logo_mark_dia: float = 0.980        # that disc's diameter, of the score size
     logo_mark_fit: float = 0.560        # share of the disc the letter may span
     logo_mark_size: float = 0.680       # W/L size, of the score's size
-    logo_mark_gap: float = 0.250        # space after the W/L, of the score's size
+    logo_mark_gap: float = 0.320        # space after the W/L, of the score's size
     logo_mark_stretch: bool = False      # open the gap so the result line
                                         # matches the month's width
     logo_mark_font: str = "assets/sans/Khula-ExtraBold.ttf"

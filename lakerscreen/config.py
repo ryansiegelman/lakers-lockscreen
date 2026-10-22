@@ -142,35 +142,35 @@ class Layout:
     # Per-team overrides for the crest in the disc. "fit" replaces logo_crest_fit;
     # "dx"/"dy" nudge the mark, as a share of the disc diameter.
     crest_tune: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
-        "ATL": {"bleed": 1.177},
-        "BKN": {"fit": 0.58, "bleed": 1.02},
-        "BOS": {"fit": 0.66, "bleed": 1.02},
-        "CHA": {"fit": 0.66, "bleed": 1.177, "dy": -0.07},
-        "CHI": {"fit": 0.66, "bleed": 1.042, "dy": -0.07},
-        "CLE": {"fit": 0.62, "bleed": 0.826},
-        "DAL": {"dx": 0.19},
-        "DEN": {"bleed": 0.643},
-        "DET": {"fit": 0.66, "dy": 0.22, "dx": -0.04},
-        "GSW": {"bleed": 1.128},
-        "HOU": {"dy": 0.15, "bleed": 1.02},
-        "IND": {"fit": 0.58, "bleed": 0.722},
-        "LAC": {"bleed": 1.0, "dx": -0.06},
-        "MEM": {"dx": -0.07},
-        "MIA": {"fit": 0.68, "bleed": 1.0, "dx": 0.06},
-        "MIL": {"dx": 0.07},
-        "MIN": {"bleed": 1.2, "dy": 0.07},
-        "NOL": {"bleed": 1.2},
-        "NYK": {"fit": 0.66, "bleed": 1.0},
-        "OKC": {"bleed": 0.773, "zone": 0.44},
-        "ORL": {"bleed": 0.972, "dy": -0.07, "zone": 0.44},
-        "PHI": {"bleed": 0.7, "dx": -0.06},
-        "PHO": {"bleed": 0.939, "dy": 0.07},
-        "POR": {"fit": 0.66, "bleed": 1.2},
-        "SAC": {"bleed": 0.942, "dy": 0.07, "zone": 0.44},
-        "SAS": {"fit": 0.66, "bleed": 1.0, "dy": 0.07},
-        "TOR": {"bleed": 0.841, "dy": 0.08, "zone": 0.44},
-        "UTA": {"bleed": 0.887, "dy": 0.07, "zone": 0.44},
-        "WAS": {"fit": 0.72, "bleed": 1.0, "dx": -0.06, "dy": 0.07},
+        "ATL": {},
+        "BKN": {"fit": 0.58},
+        "BOS": {"fit": 0.66},
+        "CHA": {"fit": 0.66, "dy": -0.07},
+        "CHI": {"fit": 0.66, "dy": -0.07},
+        "CLE": {"fit": 0.62},
+        "DAL": {},
+        "DEN": {},
+        "DET": {"fit": 0.66, "dy": 0.22},
+        "GSW": {},
+        "HOU": {"dy": 0.15},
+        "IND": {"fit": 0.58},
+        "LAC": {},
+        "MEM": {},
+        "MIA": {"fit": 0.68},
+        "MIL": {},
+        "MIN": {"dy": 0.07},
+        "NOL": {},
+        "NYK": {"fit": 0.66},
+        "OKC": {},
+        "ORL": {"dy": -0.07},
+        "PHI": {},
+        "PHO": {"dy": 0.07},
+        "POR": {"fit": 0.66},
+        "SAC": {"dy": 0.07},
+        "SAS": {"fit": 0.66, "dy": 0.07},
+        "TOR": {"dy": 0.08},
+        "UTA": {"dy": 0.07},
+        "WAS": {"fit": 0.72, "dy": 0.07},
     })
     # Marks that are already a ring. The chip's own keyline is still drawn, and
     # sits over the mark's thinner ring, so every chip's border matches while the
@@ -186,9 +186,12 @@ class Layout:
     # chip's width in padding alone, so dropping it and shortening the date
     # lets the mark itself grow by about 1.8x.
     logo_bare: bool = True
-    logo_bare_size: float = 1.200       # crest's long side, of chip height;
+    logo_bare_size: float = 1.250       # crest's long side, of chip height;
                                         # over 1.0 it runs past the chip edges
-    logo_bare_cx: float = 0.185         # crest centre, of chip width
+    logo_bare_cx: float = 0.185         # unused when bare: the mark centres on
+                                        # its zone, shifted by logo_bare_dx
+    logo_bare_dx: float = -0.060        # every mark sits this far left of its
+                                        # zone's centre, of chip height
     # A thin ring around the mark, so a shape like the Jazz note reads as
     # round the way the Warriors and Blazers marks already do. 0 turns it
     # off. The stroke is 2.66% of the ring's diameter, measured off the
@@ -198,7 +201,7 @@ class Layout:
     # height instead makes every mark overflow, and a fixed zone crops the
     # width, so all 29 are cut the same way.
     logo_bare_fill_height: bool = True
-    logo_bare_zone: float = 0.370       # the crest's share of chip width
+    logo_bare_zone: float = 0.400       # the crest's share of chip width
     logo_bare_ring: float = 0.000       # ring diameter, of chip height
     logo_bare_ring_w: float = 0.0266    # stroke, of ring diameter
     logo_bare_in_ring: float = 0.860    # crest size inside the ring

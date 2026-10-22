@@ -518,7 +518,12 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     # The disc, unless the crest is standing on its own.
     bare = lay.logo_bare
     d = h * (lay.logo_bare_size if bare else lay.logo_disc)
-    dcx, dcy = x0 + w * (lay.logo_bare_cx if bare else lay.logo_disc_cx), (y0 + y1) / 2.0
+    # Centre the mark on its own zone. A fixed fraction of the chip put the
+    # teams given a wider zone off centre inside it, so their marks sat further
+    # right than everyone else's.
+    bare_cx = lay.crest_tune.get(g.opponent.upper(), {}).get(
+        "zone", lay.logo_bare_zone) / 2.0
+    dcx, dcy = x0 + w * (bare_cx if bare else lay.logo_disc_cx), (y0 + y1) / 2.0
     if lay.logo_accent == "ring":
         # Home/away reads as a colour ring around the disc.
         od = d + 2.0 * h * lay.logo_ring_w
@@ -558,18 +563,20 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
                     outline=pal.chip_border, width=rw)
                 size = rd * lay.logo_bare_in_ring
             else:
-                size = h * tune.get("bleed", lay.logo_bare_size)
-                # The zone's width relative to chip height differs between a
-                # one- and two-column month, so a bleed baked for one crops the
-                # mark in the other. Hold it to what the zone can actually take.
+                # Every mark is drawn to the same width, so a wide logo and a
+                # round one occupy the same span and their edges line up. Height
+                # follows from the mark's own proportions, capped so a tall one
+                # is not cut off.
                 room = w * tune.get("zone", lay.logo_bare_zone)
-                size = min(size, room * crest.height / crest.width)
+                by_w = room * crest.height / crest.width
+                size = min(by_w, h * tune.get("bleed", lay.logo_bare_size))
             k = (size / crest.height if lay.logo_bare_fill_height and not lay.logo_bare_ring
                  else size / max(crest.width, crest.height))
             cw_, ch_ = max(1, int(crest.width * k * ss)), max(1, int(crest.height * k * ss))
             m = crest.resize((cw_, ch_), Image.LANCZOS)
             tmp.alpha_composite(
-                m, (int(round((dcx + d * tune.get("dx", 0.0)) * ss - cw_ / 2.0)),
+                m, (int(round((dcx + h * (lay.logo_bare_dx + tune.get("dx", 0.0)))
+                              * ss - cw_ / 2.0)),
                     int(round((dcy + h * tune.get("dy", 0.0)) * ss - ch_ / 2.0))))
             mask = Image.new("L", c.layer.size, 0)
             inset = bw * 0.5

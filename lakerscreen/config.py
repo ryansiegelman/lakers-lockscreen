@@ -192,6 +192,18 @@ class Layout:
                                         # its zone, shifted by logo_bare_dx
     logo_bare_dx: float = -0.060        # every mark sits this far left of its
                                         # zone's centre, of chip height
+    # A finished game mirrors the chip - crest on the right, result on the
+    # left - so played and upcoming are told apart at a glance.
+    logo_swap_played: bool = False
+    # How a finished game is set apart: "none", "dim" (the whole chip
+    # recedes), "quiet" (keyline drops to grey) or "both".
+    played_style: str = "quiet"
+    played_dim: float = 0.45           # how far a dimmed chip fades, 0-1
+    played_keyline: float = 0.00       # keyline level for a played chip, 0-1
+    played_hairline: float = 0.009     # thin white line on its outer edge,
+    played_drop_accent: bool = True    # no gold/purple cling once it is played
+                                       # of chip height, so the shape still reads
+                                       # separates it from the background
     # A thin ring around the mark, so a shape like the Jazz note reads as
     # round the way the Warriors and Blazers marks already do. 0 turns it
     # off. The stroke is 2.66% of the ring's diameter, measured off the

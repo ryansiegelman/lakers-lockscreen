@@ -459,7 +459,40 @@ def _logo_type_scale(c: _Canvas, cfg: Config, w: float, h: float, games) -> floa
     return worst
 
 
-def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -> None:
+def _logo_line_width(c: _Canvas, cfg: Config, g: Game, h: float, font, scale: float) -> float:
+    """Natural width of a chip's wider line, before any justification."""
+    lay = cfg.layout
+    top = _fmt_date_style(g, cfg.date_format)
+    if g.completed and g.won is not None:
+        msz = h * lay.logo_bare_type * scale * lay.logo_mark_size
+        mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
+        slot = max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0))
+        bot = slot + h * lay.logo_bare_type * scale * lay.logo_mark_gap \
+            + c.text_width(g.score_line, font, 0)
+    elif g.state == "in":
+        bot = c.text_width("LIVE", font, 0)
+    else:
+        txt = (g.start_local.strftime("%-I%p") if lay.time_compact
+               and g.start_local.minute == 0
+               else g.start_local.strftime("%-I:%M%p")).upper()
+        bot = c.text_width(txt, font, 0)
+    return max(c.text_width(top, font, 0), bot)
+
+
+def _logo_line_target(c: _Canvas, cfg: Config, h: float, games, scale: float) -> float:
+    """One width for every text block in the month.
+
+    Justifying each chip to its own longer line left the blocks ragged against
+    each other: a chip with a short date and a long score came out a different
+    width from its neighbour. The month's widest line sets the width for all.
+    """
+    font = c.font(h * (cfg.layout.logo_bare_type if cfg.layout.logo_bare
+                       else cfg.layout.logo_type) * scale)
+    return max((_logo_line_width(c, cfg, g, h, font, scale) for g in games), default=0.0)
+
+
+def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
+                    line_target: float = 0.0) -> None:
     """Stacked card, drawn to the proportions measured off the reference."""
     lay, pal = cfg.layout, cfg.palette
     x0, y0, x1, y1 = box
@@ -477,15 +510,28 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
                        fill=None, outline=pal.chip_border, width=bw)
 
+    played = g.completed and g.won is not None
+    quiet = played and lay.played_style in ("quiet", "both")
+    keyline = pal.chip_border
+    if quiet:
+        k = lay.played_keyline
+        keyline = tuple(int(round(v * k)) for v in pal.chip_border[:3]) + (255,)
     c.rounded_rect((x0, y0, x1, y1), rad,
-                   fill=pal.chip_fill, outline=pal.chip_border, width=bw)
+                   fill=pal.chip_fill, outline=keyline, width=bw)
+    if quiet and lay.played_hairline > 0:
+        # A hairline on the outer edge, so the chip still has a shape against
+        # the photo while its keyline stays dark.
+        c.rounded_rect((x0, y0, x1, y1), rad,
+                       fill=None, outline=pal.chip_border, width=h * lay.played_hairline)
 
     if lay.logo_accent == "gap":
         # White keyline back on top, so the colour reads as a band between the
         # chip's own border and that stroke.
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
                        fill=None, outline=pal.chip_border, width=bw)
-    elif lay.logo_accent == "corner":
+    elif lay.logo_accent == "corner" and not (played and lay.played_drop_accent):
+        # Home or away stops mattering once the game is played; the result
+        # is the only thing left worth saying.
         # The chip border and the offset stroke are circles about different
         # centres, so no single arc follows both: sized to the 45 degree gap it
         # overshoots at the ends, sized to the ends it leaves the outer line
@@ -521,8 +567,14 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
     # Centre the mark on its own zone. A fixed fraction of the chip put the
     # teams given a wider zone off centre inside it, so their marks sat further
     # right than everyone else's.
-    bare_cx = lay.crest_tune.get(g.opponent.upper(), {}).get(
-        "zone", lay.logo_bare_zone) / 2.0
+    zone_f = lay.crest_tune.get(g.opponent.upper(), {}).get("zone", lay.logo_bare_zone)
+    # A finished game can mirror the chip, so the eye sorts played from upcoming
+    # before reading a word of it.
+    swap = bare and lay.logo_swap_played and g.completed and g.won is not None
+    if swap:
+        bare_cx, lean = 1.0 - zone_f / 2.0, -lay.logo_bare_dx
+    else:
+        bare_cx, lean = zone_f / 2.0, lay.logo_bare_dx
     dcx, dcy = x0 + w * (bare_cx if bare else lay.logo_disc_cx), (y0 + y1) / 2.0
     if lay.logo_accent == "ring":
         # Home/away reads as a colour ring around the disc.
@@ -575,7 +627,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
             cw_, ch_ = max(1, int(crest.width * k * ss)), max(1, int(crest.height * k * ss))
             m = crest.resize((cw_, ch_), Image.LANCZOS)
             tmp.alpha_composite(
-                m, (int(round((dcx + h * (lay.logo_bare_dx + tune.get("dx", 0.0)))
+                m, (int(round((dcx + h * (lean + tune.get("dx", 0.0)))
                               * ss - cw_ / 2.0)),
                     int(round((dcy + h * tune.get("dy", 0.0)) * ss - ch_ / 2.0))))
             mask = Image.new("L", c.layer.size, 0)
@@ -587,8 +639,11 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
             if lay.logo_bare_fill_height and not lay.logo_bare_ring:
                 # Crop the width to the crest's own zone, the way the chip's
                 # top and bottom crop its height.
-                md.rectangle([(x0 + w * tune.get("zone", lay.logo_bare_zone)) * ss, 0,
-                              c.layer.size[0], c.layer.size[1]], fill=0)
+                if swap:
+                    md.rectangle([0, 0, (x1 - w * zone_f) * ss, c.layer.size[1]], fill=0)
+                else:
+                    md.rectangle([(x0 + w * zone_f) * ss, 0,
+                                  c.layer.size[0], c.layer.size[1]], fill=0)
             tmp.putalpha(ImageChops.multiply(tmp.getchannel("A"), mask))
             c.layer.alpha_composite(tmp)
             drawn = True
@@ -622,6 +677,15 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         c.text((dcx, dcy), g.opponent, cfont,
                pal.text if lay.logo_disc_invert else pal.badge_text, anchor="mc")
 
+    if played and lay.played_style in ("dim", "both"):
+        # Fade the finished chip back, so the games still to come read first.
+        ss = c.ss
+        veil = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
+        ImageDraw.Draw(veil).rounded_rectangle(
+            [x0 * ss, y0 * ss, x1 * ss, y1 * ss], radius=int(round(rad * ss)),
+            fill=(0, 0, 0, int(round(255 * lay.played_dim))))
+        c.layer.alpha_composite(veil)
+
     # Date over time, both the same size, centred as a block.
     tsz = h * (lay.logo_bare_type if bare else lay.logo_type) * scale
     font = c.font(tsz)
@@ -644,9 +708,13 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         # Centre the block in whatever the crest leaves, rather than at a fixed
         # fraction of the chip: off-centre, one side runs out first and caps the
         # type well before the other side is full.
-        lo = (x0 + w * tune.get("zone", lay.logo_bare_zone) if lay.logo_bare_fill_height
-              and not lay.logo_bare_ring else dcx + d / 2.0) + w * lay.logo_bare_gap_l
-        hi = x1 - w * lay.logo_bare_gap_r
+        if swap:
+            lo = x0 + w * lay.logo_bare_gap_r
+            hi = x1 - w * zone_f - w * lay.logo_bare_gap_l
+        else:
+            lo = (x0 + w * zone_f if lay.logo_bare_fill_height
+                  and not lay.logo_bare_ring else dcx + d / 2.0) + w * lay.logo_bare_gap_l
+            hi = x1 - w * lay.logo_bare_gap_r
         tcx, room = (lo + hi) / 2.0, hi - lo
     else:
         tcx = x0 + w * lay.logo_text_cx
@@ -669,7 +737,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         w_bot = slot + mark_gap + c.text_width(result_score, font, 0)
     else:
         w_bot = c.text_width(bot_txt, font, 0)
-    target = max(w_top, w_bot)
+    target = max(w_top, w_bot, line_target)
 
     # Closing the gap by letter spacing alone pulls a short line apart - a time
     # set against a wide date ends up as "7 : 0 0 P M". So the narrower line is
@@ -693,8 +761,11 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0) -
         # The slack goes into the score's letters and into the gap before it,
         # so the W/L keeps its shape and the pair still starts and ends flush.
         sw = c.text_width(result_score, font, 0)
+        # The slack is shared by the score's own letter gaps and the gap after
+        # the W, so it divides by one more than the letter gaps. Dividing by the
+        # letter gaps alone made this line overshoot every other one.
         n = len(result_score) - 1
-        tr = ((target - w_bot) / n if n > 0 else 0.0)
+        tr = ((target - w_bot) / (n + 1)) if n >= 0 else 0.0
         gap = mark_gap + tr
         start = tcx - (slot + gap + sw + tr * n) / 2.0
         c.text((start + slot, yb), result_mark, mfont, pal.text, anchor="rc")
@@ -950,6 +1021,8 @@ def build(cfg: Config, ttl: Optional[int] = None
         scale = (_logo_type_scale(c, cfg, col_w, chip_h, shown)
                  if cfg.chip_style == "logo"
                  else _type_scale(c, cfg, col_w, chip_h, shown, tag_w))
+        logo_target = (_logo_line_target(c, cfg, chip_h, shown, scale)
+                       if cfg.chip_style == "logo" else 0.0)
         line_target = _line_target(c, cfg, col_w, chip_h, shown, scale, tag_w, games)
         for i, g in enumerate(shown):
             col, row = divmod(i, rows)            # column-major: the whole left
@@ -957,7 +1030,8 @@ def build(cfg: Config, ttl: Optional[int] = None
             x0 = col_x[col]
             y0 = start_y + row * pitch + (pitch - chip_h) / 2.0
             if cfg.chip_style == "logo":
-                _draw_chip_logo(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale)
+                _draw_chip_logo(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale,
+                                logo_target)
             else:
                 _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale,
                            tag_w, line_target, tag_h_px, tag_letter_px)

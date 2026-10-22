@@ -620,7 +620,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 # round one occupy the same span and their edges line up. Height
                 # follows from the mark's own proportions, capped so a tall one
                 # is not cut off.
-                room = w * tune.get("zone", lay.logo_bare_zone)
+                room = w * tune.get("mark_zone", tune.get("zone", lay.logo_bare_zone))
                 by_w = room * crest.height / crest.width
                 size = min(by_w, h * tune.get("bleed", lay.logo_bare_size))
             k = (size / crest.height if lay.logo_bare_fill_height and not lay.logo_bare_ring
@@ -643,7 +643,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 if swap:
                     md.rectangle([0, 0, (x1 - w * zone_f) * ss, c.layer.size[1]], fill=0)
                 else:
-                    md.rectangle([(x0 + w * zone_f) * ss, 0,
+                    md.rectangle([(x0 + w * tune.get("mark_zone", zone_f)) * ss, 0,
                                   c.layer.size[0], c.layer.size[1]], fill=0)
             tmp.putalpha(ImageChops.multiply(tmp.getchannel("A"), mask))
             c.layer.alpha_composite(tmp)

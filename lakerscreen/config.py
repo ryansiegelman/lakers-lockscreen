@@ -143,7 +143,7 @@ class Layout:
     # "dx"/"dy" nudge the mark, as a share of the disc diameter.
     crest_tune: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
         "ATL": {},
-        "BKN": {"fit": 0.58},
+        "BKN": {"bleed": 1.06},
         "BOS": {"fit": 0.66},
         "CHA": {"fit": 0.66, "dy": -0.07},
         "CHI": {"fit": 0.66, "dy": -0.07},
@@ -153,7 +153,7 @@ class Layout:
         "DET": {"fit": 0.66, "dy": 0.22},
         "GSW": {"bleed": 0.985},
         "HOU": {"dy": 0.15},
-        "IND": {"fit": 0.58},
+        "IND": {"bleed": 0.70},
         "LAC": {},
         "MEM": {},
         "MIA": {"fit": 0.68},
@@ -161,15 +161,12 @@ class Layout:
         "MIN": {"dy": 0.07},
         "NOL": {},
         "NYK": {"fit": 0.66},
-        "OKC": {},
         "ORL": {"dy": -0.07},
-        "PHI": {},
+        "PHI": {"bleed": 0.80, "dx": -0.10},
         "PHO": {"dy": 0.07},
         "POR": {"fit": 0.66},
         "SAC": {"dy": 0.07},
         "SAS": {"fit": 0.66, "dy": 0.07},
-        "TOR": {"dy": 0.08},
-        "UTA": {"dy": 0.07},
         "WAS": {"fit": 0.72, "dy": 0.07},
     })
     # Marks that are already a ring. The chip's own keyline is still drawn, and

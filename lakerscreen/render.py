@@ -767,11 +767,19 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         # letter gaps alone made this line overshoot every other one.
         # The slack opens the gap after the W rather than spacing the digits:
         # a tracked-out score reads as a different size from the date above it.
-        tr = 0.0
-        # logo_mark_stretch opens the gap to reach the month's width; without it
-        # the W stays tight to the score and the line is simply shorter.
-        gap = mark_gap + (max(0.0, target - w_bot) if lay.logo_mark_stretch else 0.0)
-        start = tcx - (slot + gap + sw) / 2.0
+        # Only a score with a two-digit opponent total falls short, by one
+        # character's width. logo_mark_fill says where that goes: "gap" opens
+        # the space after the W, "track" spreads it through the digits, "none"
+        # leaves the line short.
+        slack = max(0.0, target - w_bot)
+        n = len(result_score) - 1
+        if lay.logo_mark_fill == "track" and n > 0:
+            tr, gap = slack / n, mark_gap
+        elif lay.logo_mark_fill == "gap":
+            tr, gap = 0.0, mark_gap + slack
+        else:
+            tr, gap = 0.0, mark_gap
+        start = tcx - (slot + gap + sw + tr * n) / 2.0
         c.text((start + slot, yb), result_mark, mfont, pal.text, anchor="rc")
         c.text((start + slot + gap, yb), result_score, font, pal.text,
                tracking=tr, anchor="lc")

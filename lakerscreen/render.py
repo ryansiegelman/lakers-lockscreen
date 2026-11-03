@@ -845,9 +845,18 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             # out of purple, whichever stays legible against that fill.
             bcx = start + badge_d / 2.0
             disc = pal.chip_border if badge == "white" else won_col
-            c.rounded_rect((bcx - badge_d / 2.0, yb - badge_d / 2.0,
-                            bcx + badge_d / 2.0, yb + badge_d / 2.0),
-                           badge_d / 2.0, fill=disc)
+            ring = badge_d * lay.played_badge_ring
+            if ring > 0 and badge != "white":
+                # White first, colour inside it: an outline stroke would be
+                # drawn inward from the bounds anyway, and this keeps the rim
+                # a clean circle at any weight.
+                c.rounded_rect((bcx - badge_d / 2.0, yb - badge_d / 2.0,
+                                bcx + badge_d / 2.0, yb + badge_d / 2.0),
+                               badge_d / 2.0, fill=pal.chip_border)
+            cd = badge_d - 2.0 * ring if badge != "white" else badge_d
+            c.rounded_rect((bcx - cd / 2.0, yb - cd / 2.0,
+                            bcx + cd / 2.0, yb + cd / 2.0),
+                           cd / 2.0, fill=disc)
             if badge != "dot":
                 # On white the letter takes the official colour, which reads
                 # better there than the lifted purple meant for the chip's

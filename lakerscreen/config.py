@@ -216,7 +216,11 @@ class Layout:
     # colour as the letter, "fill" is a gold/purple disc with a white letter,
     # and "dot" drops the letter entirely: the colour alone says win or loss.
     played_badge: str = "dot"
-    played_badge_size: float = 0.50    # disc diameter, of the date's type size
+    played_badge_size: float = 0.62    # the dot's whole footprint, rim and
+                                       # all, of the date's type size
+    played_badge_ring: float = 0.10    # white rim, of that footprint. It eats
+                                       # inward, so the colour comes out at
+                                       # size * (1 - 2 * ring) - here 0.50
     played_badge_letter: float = 0.58  # letter inside it, of the DISC's size,
                                        # so the rim holds as the disc resizes
     played_badge_stroke: float = 0.06  # black keyline on a white letter over a

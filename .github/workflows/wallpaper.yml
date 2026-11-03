@@ -6,6 +6,18 @@ on:
   schedule:
     - cron: "0 6,10,17 * * *"
   workflow_dispatch:
+  # A change to how the wallpaper is drawn should show up on the phone without
+  # waiting for the next cron. The bot's own wallpaper commits use the default
+  # GITHUB_TOKEN, which by design does not re-trigger workflows, so this cannot
+  # loop; the paths filter keeps it to commits that can change the image.
+  push:
+    branches: [main]
+    paths:
+      - "lakerscreen/**"
+      - "assets/**"
+      - "generate.py"
+      - "requirements.txt"
+      - ".github/workflows/wallpaper.yml"
 
 permissions:
   contents: write

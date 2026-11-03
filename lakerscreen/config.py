@@ -37,6 +37,14 @@ RGBA = Tuple[int, int, int, int]
 class Palette:
     gold: RGBA = (253, 185, 39, 255)          # #FDB927, official Lakers gold
     purple: RGBA = (85, 37, 131, 255)         # #552583, official Lakers purple
+    loss_ink: RGBA = (155, 107, 232, 255)     # #9B6BE8, the bare L when
+                                              # played_badge is "none".
+                                              # Official purple on the chip's
+                                              # black runs about 1.9:1 against
+                                              # the gold W's 11:1; lifted it
+                                              # reads at arm's length and still
+                                              # scans as purple. Unused once
+                                              # the letter sits in a disc.
     chip_fill: RGBA = (8, 8, 10, 236)
     chip_border: RGBA = (255, 255, 255, 255)
     chip_shadow: RGBA = (255, 255, 255, 150)  # the offset "sticker stack" edge
@@ -193,11 +201,22 @@ class Layout:
     # left - so played and upcoming are told apart at a glance.
     logo_swap_played: bool = False
     # How a finished game is set apart: "none", "dim" (the whole chip
-    # recedes), "quiet" (keyline drops to grey) or "both".
-    played_style: str = "quiet"
+    # recedes), "quiet" (keyline drops to grey), "both", "mark" (quiet, and
+    # the W/L takes the result's colour), "dimlogo", "bar", "invert" or
+    # "ghost".
+    played_style: str = "mark"
     played_dim: float = 0.45           # how far a dimmed chip fades, 0-1
+    played_bar: float = 0.085         # colour bar along a played chip's foot
     played_keyline: float = 0.00       # keyline level for a played chip, 0-1
     played_hairline: float = 0.009     # thin white line on its outer edge,
+    played_accent: bool = False        # keep the home/away cling after the game;
+                                       # off, so only the W/L carries colour
+    # The W/L sits in a small disc rather than loose on the chip's black.
+    # "none" leaves it bare, "white" is a white disc with the result's colour
+    # as the letter, "fill" is a gold/purple disc with a white letter.
+    played_badge: str = "fill"
+    played_badge_size: float = 0.96    # disc diameter, of the date's type size
+    played_badge_letter: float = 0.56  # letter inside it, of the date's type size
     played_accent_hairline: bool = True  # a played chip's cling matches its hairline
                                        # of chip height, so the shape still reads
                                        # separates it from the background

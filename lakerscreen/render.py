@@ -429,6 +429,22 @@ def _ink_height(c: _Canvas, runs: Sequence[Run]) -> float:
     return bot - top
 
 
+def _mark_slot(c: _Canvas, cfg: Config, tsz: float):
+    """The W/L's font and the width the result line reserves for it.
+
+    A badge reserves its disc's diameter rather than the glyph's width, and
+    sets the letter smaller to leave a rim. Both the width solvers and the
+    draw go through here, so a line is measured exactly as it is drawn.
+    """
+    lay = cfg.layout
+    badge = lay.played_badge if lay.played_style == "mark" else "none"
+    msz = tsz * (lay.played_badge_letter if badge != "none" else lay.logo_mark_size)
+    mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
+    slot = (tsz * lay.played_badge_size if badge != "none"
+            else max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0)))
+    return badge, mfont, slot
+
+
 def _logo_type_scale(c: _Canvas, cfg: Config, w: float, h: float, games) -> float:
     """One type size for every chip in the month.
 
@@ -446,14 +462,17 @@ def _logo_type_scale(c: _Canvas, cfg: Config, w: float, h: float, games) -> floa
         room = w * (1.0 - zone - lay.logo_bare_gap_l - lay.logo_bare_gap_r)
         top = _fmt_date_style(g, cfg.date_format)
         if g.completed and g.won is not None:
-            bot = "%s %s" % ("W" if g.won else "L", g.score_line)
-        elif g.state == "in":
-            bot = "LIVE"
+            _, _, slot = _mark_slot(c, cfg, base)
+            w_bot = slot + base * lay.logo_mark_gap + c.text_width(g.score_line, font, 0)
         else:
-            bot = (g.start_local.strftime("%-I%p") if lay.time_compact
-                   and g.start_local.minute == 0
-                   else g.start_local.strftime("%-I:%M%p")).upper()
-        widest = max(c.text_width(top, font, 0), c.text_width(bot, font, 0))
+            if g.state == "in":
+                bot = "LIVE"
+            else:
+                bot = (g.start_local.strftime("%-I%p") if lay.time_compact
+                       and g.start_local.minute == 0
+                       else g.start_local.strftime("%-I:%M%p")).upper()
+            w_bot = c.text_width(bot, font, 0)
+        widest = max(c.text_width(top, font, 0), w_bot)
         if widest > 0 and room > 0:
             worst = min(worst, room / widest)
     return worst
@@ -464,11 +483,9 @@ def _logo_line_width(c: _Canvas, cfg: Config, g: Game, h: float, font, scale: fl
     lay = cfg.layout
     top = _fmt_date_style(g, cfg.date_format)
     if g.completed and g.won is not None:
-        msz = h * lay.logo_bare_type * scale * lay.logo_mark_size
-        mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
-        slot = max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0))
-        bot = slot + h * lay.logo_bare_type * scale * lay.logo_mark_gap \
-            + c.text_width(g.score_line, font, 0)
+        tsz = h * lay.logo_bare_type * scale
+        _, _, slot = _mark_slot(c, cfg, tsz)
+        bot = slot + tsz * lay.logo_mark_gap + c.text_width(g.score_line, font, 0)
     elif g.state == "in":
         bot = c.text_width("LIVE", font, 0)
     else:
@@ -502,7 +519,13 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     off = h * lay.logo_offset
     accent = pal.gold if g.is_home else pal.purple
 
-    if lay.logo_accent == "gap":
+    played = g.completed and g.won is not None
+    style = lay.played_style if played else "none"
+    # Home or away stops mattering once the game is over: the cling comes off
+    # and the result's own colour carries the chip instead.
+    show_accent = not (played and not lay.played_accent)
+
+    if lay.logo_accent == "gap" and show_accent:
         # Colour fills the whole offset shape; the chip then masks all of it
         # except the band showing past the chip's bottom and right edges.
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad, fill=accent)
@@ -510,26 +533,34 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
                        fill=None, outline=pal.chip_border, width=bw)
 
-    played = g.completed and g.won is not None
-    quiet = played and lay.played_style in ("quiet", "both")
+    quiet = style in ("quiet", "both", "mark", "dimlogo", "bar")
+    invert = style == "invert"
+    ghost = style == "ghost"
+    # the result's own colour: gold for a win, purple for a loss. The bar and
+    # cling sit against white or the photo, so they take the deep purple; the
+    # W/L sits on the chip's own black and takes the lifted one.
+    won_col = pal.gold if g.won else pal.purple
+    ink_col = pal.gold if g.won else pal.loss_ink
+    txt_col = pal.chip_fill if invert else pal.text
     keyline = pal.chip_border
     if quiet:
         k = lay.played_keyline
         keyline = tuple(int(round(v * k)) for v in pal.chip_border[:3]) + (255,)
+    fill = None if ghost else (pal.chip_border if invert else pal.chip_fill)
     c.rounded_rect((x0, y0, x1, y1), rad,
-                   fill=pal.chip_fill, outline=keyline, width=bw)
+                   fill=fill, outline=keyline, width=bw)
     if quiet and lay.played_hairline > 0:
         # A hairline on the outer edge, so the chip still has a shape against
         # the photo while its keyline stays dark.
         c.rounded_rect((x0, y0, x1, y1), rad,
                        fill=None, outline=pal.chip_border, width=h * lay.played_hairline)
 
-    if lay.logo_accent == "gap":
+    if lay.logo_accent == "gap" and show_accent:
         # White keyline back on top, so the colour reads as a band between the
         # chip's own border and that stroke.
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
                        fill=None, outline=pal.chip_border, width=bw)
-    elif lay.logo_accent == "corner":
+    elif lay.logo_accent == "corner" and show_accent:
         # The chip border and the offset stroke are circles about different
         # centres, so no single arc follows both: sized to the 45 degree gap it
         # overshoots at the ends, sized to the ends it leaves the outer line
@@ -646,6 +677,14 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                     md.rectangle([(x0 + w * tune.get("mark_zone", zone_f)) * ss, 0,
                                   c.layer.size[0], c.layer.size[1]], fill=0)
             tmp.putalpha(ImageChops.multiply(tmp.getchannel("A"), mask))
+            if invert:
+                solid = Image.new("RGBA", tmp.size, tuple(pal.chip_fill[:3]) + (255,))
+                solid.putalpha(tmp.getchannel("A"))
+                tmp = solid
+            elif style == "dimlogo":
+                a = tmp.getchannel("A").point(
+                    lambda v: int(v * (1.0 - lay.played_dim)))
+                tmp.putalpha(a)
             c.layer.alpha_composite(tmp)
             drawn = True
         elif crest is not None and as_disc:
@@ -687,6 +726,16 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             fill=(0, 0, 0, int(round(255 * lay.played_dim))))
         c.layer.alpha_composite(veil)
 
+    if style == "bar":
+        ss = c.ss
+        bar = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
+        bd = ImageDraw.Draw(bar)
+        bh = h * lay.played_bar
+        bd.rounded_rectangle([x0 * ss, y0 * ss, x1 * ss, y1 * ss],
+                             radius=int(round(rad * ss)), fill=won_col)
+        bd.rectangle([0, 0, bar.size[0], (y1 - bh) * ss], fill=(0, 0, 0, 0))
+        c.layer.alpha_composite(bar)
+
     # Date over time, both the same size, centred as a block.
     tsz = h * (lay.logo_bare_type if bare else lay.logo_type) * scale
     font = c.font(tsz)
@@ -726,12 +775,13 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     # Both lines are set to the same width: the narrower one is tracked out to
     # meet the wider, so the block reads as a justified pair rather than two
     # centred lines of whatever length the date happened to be.
-    msz = tsz * lay.logo_mark_size
-    mfont = (assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
-             if result_mark else None)
+    # A badge sets the letter in a disc, so the letter itself runs smaller and
+    # the disc's diameter — not the glyph — is what the line reserves for it.
+    badge, mfont, slot = ("none", None, 0.0)
+    if result_mark:
+        badge, mfont, slot = _mark_slot(c, cfg, tsz)
+    badge_d = slot if badge != "none" else 0.0
     mark_gap = tsz * lay.logo_mark_gap
-    slot = (max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0))
-            if result_mark else 0.0)
 
     w_top = c.text_width(top_txt, font, 0)
     if result_mark:
@@ -754,7 +804,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         return f, ((target - wide) / n if n > 0 else 0.0)
 
     f_top, tr_top = _fit(top_txt, w_top)
-    c.text((tcx, y0 + h * lay.logo_line1), top_txt, f_top, pal.text,
+    c.text((tcx, y0 + h * lay.logo_line1), top_txt, f_top, txt_col,
            tracking=tr_top, anchor="mc")
 
     yb = y0 + h * lay.logo_line2
@@ -780,12 +830,29 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         else:
             tr, gap = 0.0, mark_gap
         start = tcx - (slot + gap + sw + tr * n) / 2.0
-        c.text((start + slot, yb), result_mark, mfont, pal.text, anchor="rc")
-        c.text((start + slot + gap, yb), result_score, font, pal.text,
+        if badge == "none":
+            c.text((start + slot, yb), result_mark, mfont,
+                   ink_col if style == "mark" else txt_col, anchor="rc")
+        else:
+            # Letter in a disc. On white the result's colour carries it; on a
+            # filled disc the letter is knocked out — black out of gold, white
+            # out of purple, whichever stays legible against that fill.
+            bcx = start + badge_d / 2.0
+            disc = pal.chip_border if badge == "white" else won_col
+            # On white the letter takes the official colour, which reads better
+            # there than the lifted purple meant for the chip's black. On a
+            # filled disc it is always white, so a win and a loss differ only
+            # by the colour of the disc itself.
+            letter = won_col if badge == "white" else pal.text
+            c.rounded_rect((bcx - badge_d / 2.0, yb - badge_d / 2.0,
+                            bcx + badge_d / 2.0, yb + badge_d / 2.0),
+                           badge_d / 2.0, fill=disc)
+            c.text((bcx, yb), result_mark, mfont, letter, anchor="mc")
+        c.text((start + slot + gap, yb), result_score, font, txt_col,
                tracking=tr, anchor="lc")
     else:
         f_bot, tr_bot = _fit(bot_txt, w_bot)
-        c.text((tcx, yb), bot_txt, f_bot, pal.text, tracking=tr_bot, anchor="mc")
+        c.text((tcx, yb), bot_txt, f_bot, txt_col, tracking=tr_bot, anchor="mc")
 
 
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,

@@ -660,6 +660,11 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 room = w * tune.get("mark_zone", tune.get("zone", lay.logo_bare_zone))
                 by_w = room * crest.height / crest.width
                 size = min(by_w, h * tune.get("bleed", lay.logo_bare_size))
+                # "zoom" pushes a mark past its zone so the zone's own crop
+                # takes the sides. A short, wide mark reads small at the width
+                # everyone shares; zooming it fills the chip's height instead,
+                # and the crop keeps its rendered width identical to the rest.
+                size *= tune.get("zoom", 1.0)
             k = (size / crest.height if lay.logo_bare_fill_height and not lay.logo_bare_ring
                  else size / max(crest.width, crest.height))
             cw_, ch_ = max(1, int(crest.width * k * ss)), max(1, int(crest.height * k * ss))

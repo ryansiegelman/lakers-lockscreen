@@ -212,10 +212,11 @@ class Layout:
     played_accent: bool = False        # keep the home/away cling after the game;
                                        # off, so only the W/L carries colour
     # The W/L sits in a small disc rather than loose on the chip's black.
-    # "none" leaves it bare, "white" is a white disc with the result's colour
-    # as the letter, "fill" is a gold/purple disc with a white letter.
-    played_badge: str = "fill"
-    played_badge_size: float = 0.84    # disc diameter, of the date's type size
+    # "none" leaves the W/L bare, "white" is a white disc with the result's
+    # colour as the letter, "fill" is a gold/purple disc with a white letter,
+    # and "dot" drops the letter entirely: the colour alone says win or loss.
+    played_badge: str = "dot"
+    played_badge_size: float = 0.50    # disc diameter, of the date's type size
     played_badge_letter: float = 0.58  # letter inside it, of the DISC's size,
                                        # so the rim holds as the disc resizes
     played_badge_stroke: float = 0.06  # black keyline on a white letter over a

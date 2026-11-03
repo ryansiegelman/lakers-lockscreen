@@ -845,18 +845,19 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             # out of purple, whichever stays legible against that fill.
             bcx = start + badge_d / 2.0
             disc = pal.chip_border if badge == "white" else won_col
-            # On white the letter takes the official colour, which reads better
-            # there than the lifted purple meant for the chip's black. On a
-            # filled disc it is always white, so a win and a loss differ only
-            # by the colour of the disc itself.
-            letter = won_col if badge == "white" else pal.text
             c.rounded_rect((bcx - badge_d / 2.0, yb - badge_d / 2.0,
                             bcx + badge_d / 2.0, yb + badge_d / 2.0),
                            badge_d / 2.0, fill=disc)
-            # A keyline on the letter, so white still separates from gold.
-            stroke = msz * lay.played_badge_stroke if badge == "fill" else 0.0
-            c.text((bcx, yb), result_mark, mfont, letter, anchor="mc",
-                   stroke_width=stroke, stroke_fill=pal.badge_text)
+            if badge != "dot":
+                # On white the letter takes the official colour, which reads
+                # better there than the lifted purple meant for the chip's
+                # black. On a filled disc it is always white, so a win and a
+                # loss differ only by the colour of the disc itself.
+                letter = won_col if badge == "white" else pal.text
+                # A keyline on the letter, so white still separates from gold.
+                stroke = msz * lay.played_badge_stroke if badge == "fill" else 0.0
+                c.text((bcx, yb), result_mark, mfont, letter, anchor="mc",
+                       stroke_width=stroke, stroke_fill=pal.badge_text)
         c.text((start + slot + gap, yb), result_score, font, txt_col,
                tracking=tr, anchor="lc")
     else:

@@ -215,9 +215,10 @@ class Layout:
     # "none" leaves it bare, "white" is a white disc with the result's colour
     # as the letter, "fill" is a gold/purple disc with a white letter.
     played_badge: str = "fill"
-    played_badge_size: float = 0.96    # disc diameter, of the date's type size
-    played_badge_letter: float = 0.56  # letter inside it, of the date's type size
-    played_badge_stroke: float = 0.10  # black keyline on a white letter over a
+    played_badge_size: float = 0.84    # disc diameter, of the date's type size
+    played_badge_letter: float = 0.58  # letter inside it, of the DISC's size,
+                                       # so the rim holds as the disc resizes
+    played_badge_stroke: float = 0.06  # black keyline on a white letter over a
                                        # filled disc, of the letter's size; it
                                        # is what separates white from gold
     played_accent_hairline: bool = True  # a played chip's cling matches its hairline

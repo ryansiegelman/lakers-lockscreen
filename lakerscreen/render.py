@@ -438,10 +438,16 @@ def _mark_slot(c: _Canvas, cfg: Config, tsz: float):
     """
     lay = cfg.layout
     badge = lay.played_badge if lay.played_style == "mark" else "none"
-    msz = tsz * (lay.played_badge_letter if badge != "none" else lay.logo_mark_size)
-    mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
-    slot = (tsz * lay.played_badge_size if badge != "none"
-            else max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0)))
+    if badge != "none":
+        # The letter is sized off the disc, not off the date, so resizing the
+        # badge keeps the rim around the letter the same.
+        slot = tsz * lay.played_badge_size
+        msz = slot * lay.played_badge_letter
+        mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
+    else:
+        msz = tsz * lay.logo_mark_size
+        mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
+        slot = max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0))
     return badge, mfont, slot, msz
 
 

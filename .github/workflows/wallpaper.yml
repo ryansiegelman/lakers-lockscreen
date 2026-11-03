@@ -1,10 +1,12 @@
 name: render wallpaper
 
-# Times are UTC. 10:00 UTC = 3am PT, 17:00 = 10am PT, 06:00 = 11pm PT
-# (the late one is what catches West-coast games finishing after 10pm).
+# Times are UTC, which is all cron understands. 06:00 UTC = 10pm PST, the
+# late run that catches West-coast games finishing after 10pm; 16:00 = 8am
+# PST, so the morning's board is ready before the day starts. Both land an
+# hour later in local terms over summer, when the coast is on PDT.
 on:
   schedule:
-    - cron: "0 6,10,17 * * *"
+    - cron: "0 6,16 * * *"
   workflow_dispatch:
   # A change to how the wallpaper is drawn should show up on the phone without
   # waiting for the next cron. The bot's own wallpaper commits use the default

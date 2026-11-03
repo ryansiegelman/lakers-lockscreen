@@ -442,7 +442,7 @@ def _mark_slot(c: _Canvas, cfg: Config, tsz: float):
     mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
     slot = (tsz * lay.played_badge_size if badge != "none"
             else max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0)))
-    return badge, mfont, slot
+    return badge, mfont, slot, msz
 
 
 def _logo_type_scale(c: _Canvas, cfg: Config, w: float, h: float, games) -> float:
@@ -462,7 +462,7 @@ def _logo_type_scale(c: _Canvas, cfg: Config, w: float, h: float, games) -> floa
         room = w * (1.0 - zone - lay.logo_bare_gap_l - lay.logo_bare_gap_r)
         top = _fmt_date_style(g, cfg.date_format)
         if g.completed and g.won is not None:
-            _, _, slot = _mark_slot(c, cfg, base)
+            _, _, slot, _ = _mark_slot(c, cfg, base)
             w_bot = slot + base * lay.logo_mark_gap + c.text_width(g.score_line, font, 0)
         else:
             if g.state == "in":
@@ -484,7 +484,7 @@ def _logo_line_width(c: _Canvas, cfg: Config, g: Game, h: float, font, scale: fl
     top = _fmt_date_style(g, cfg.date_format)
     if g.completed and g.won is not None:
         tsz = h * lay.logo_bare_type * scale
-        _, _, slot = _mark_slot(c, cfg, tsz)
+        _, _, slot, _ = _mark_slot(c, cfg, tsz)
         bot = slot + tsz * lay.logo_mark_gap + c.text_width(g.score_line, font, 0)
     elif g.state == "in":
         bot = c.text_width("LIVE", font, 0)
@@ -777,9 +777,9 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     # centred lines of whatever length the date happened to be.
     # A badge sets the letter in a disc, so the letter itself runs smaller and
     # the disc's diameter — not the glyph — is what the line reserves for it.
-    badge, mfont, slot = ("none", None, 0.0)
+    badge, mfont, slot, msz = ("none", None, 0.0, 0.0)
     if result_mark:
-        badge, mfont, slot = _mark_slot(c, cfg, tsz)
+        badge, mfont, slot, msz = _mark_slot(c, cfg, tsz)
     badge_d = slot if badge != "none" else 0.0
     mark_gap = tsz * lay.logo_mark_gap
 
@@ -847,7 +847,10 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             c.rounded_rect((bcx - badge_d / 2.0, yb - badge_d / 2.0,
                             bcx + badge_d / 2.0, yb + badge_d / 2.0),
                            badge_d / 2.0, fill=disc)
-            c.text((bcx, yb), result_mark, mfont, letter, anchor="mc")
+            # A keyline on the letter, so white still separates from gold.
+            stroke = msz * lay.played_badge_stroke if badge == "fill" else 0.0
+            c.text((bcx, yb), result_mark, mfont, letter, anchor="mc",
+                   stroke_width=stroke, stroke_fill=pal.badge_text)
         c.text((start + slot + gap, yb), result_score, font, txt_col,
                tracking=tr, anchor="lc")
     else:

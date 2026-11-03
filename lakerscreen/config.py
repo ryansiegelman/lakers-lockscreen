@@ -217,6 +217,9 @@ class Layout:
     played_badge: str = "fill"
     played_badge_size: float = 0.96    # disc diameter, of the date's type size
     played_badge_letter: float = 0.56  # letter inside it, of the date's type size
+    played_badge_stroke: float = 0.10  # black keyline on a white letter over a
+                                       # filled disc, of the letter's size; it
+                                       # is what separates white from gold
     played_accent_hairline: bool = True  # a played chip's cling matches its hairline
                                        # of chip height, so the shape still reads
                                        # separates it from the background

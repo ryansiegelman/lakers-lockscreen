@@ -213,8 +213,7 @@ class Layout:
     played_bar: float = 0.085         # colour bar along a played chip's foot
     played_keyline: float = 0.00       # keyline level for a played chip, 0-1
     played_hairline: float = 0.009     # thin white line on its outer edge,
-    played_accent: bool = False        # keep the home/away cling after the game;
-                                       # off, so only the W/L carries colour
+    played_accent: bool = True         # keep the home/away cling after the game
     # The W/L sits in a small disc rather than loose on the chip's black.
     # "none" leaves the W/L bare, "white" is a white disc with the result's
     # colour as the letter, "fill" is a gold/purple disc with a white letter,
@@ -230,6 +229,10 @@ class Layout:
     played_badge_stroke: float = 0.06  # black keyline on a white letter over a
                                        # filled disc, of the letter's size; it
                                        # is what separates white from gold
+    played_accent_over_dim: bool = False  # True lays that cling after the veil,
+                                       # so the one spot of colour keeps its
+                                       # strength while the chip recedes; off,
+                                       # it fades with everything else
     played_accent_hairline: bool = True  # a played chip's cling matches its hairline
                                        # of chip height, so the shape still reads
                                        # separates it from the background

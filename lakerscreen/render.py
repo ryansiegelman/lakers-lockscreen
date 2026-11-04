@@ -572,13 +572,17 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         # chip's own border and that stroke.
         c.rounded_rect((x0 + off, y0 + off, x1 + off, y1 + off), rad,
                        fill=None, outline=pal.chip_border, width=bw)
-    elif lay.logo_accent == "corner" and show_accent:
-        # The chip border and the offset stroke are circles about different
-        # centres, so no single arc follows both: sized to the 45 degree gap it
-        # overshoots at the ends, sized to the ends it leaves the outer line
-        # bare at 45. Build the run from the boundaries instead - inside the
-        # outermost stroke's outer edge, outside the chip border's inner edge -
-        # keeping only the bottom-right corner of that band.
+
+    def _corner():
+        """The home/away cling: a band of colour in the bottom-right corner.
+
+        The chip border and the offset stroke are circles about different
+        centres, so no single arc follows both: sized to the 45 degree gap it
+        overshoots at the ends, sized to the ends it leaves the outer line
+        bare at 45. Build the run from the boundaries instead - inside the
+        outermost stroke's outer edge, outside the chip border's inner edge -
+        keeping only the bottom-right corner of that band.
+        """
         ss = c.ss
         tmp = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
         td = ImageDraw.Draw(tmp)
@@ -593,7 +597,8 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             radius=int(round((rad + bleed) * ss)), fill=accent)
         # On a played chip the band matches that chip's hairline, so the colour
         # reads as part of the same thinner frame rather than a leftover.
-        aw = h * lay.played_hairline if quiet else bw
+        aw = (h * lay.played_hairline
+              if (quiet and lay.played_accent_hairline) else bw)
         inner = aw + bleed               # erase BEYOND the stroke, not into it
         td.rounded_rectangle(
             [(x0 + inner) * ss, (y0 + inner) * ss,
@@ -604,6 +609,13 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         td.rectangle([0, 0, ccx, tmp.size[1]], fill=(0, 0, 0, 0))
         td.rectangle([0, 0, tmp.size[0], ccy], fill=(0, 0, 0, 0))
         c.layer.alpha_composite(tmp)
+
+    # A played chip's cling can wait until after the veil, so the one spot of
+    # colour keeps its strength while everything round it recedes.
+    corner = lay.logo_accent == "corner" and show_accent
+    late_corner = corner and played and lay.played_accent_over_dim
+    if corner and not late_corner:
+        _corner()
 
     # The disc, unless the crest is standing on its own.
     bare = lay.logo_bare
@@ -892,6 +904,8 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
 
     if dimming and lay.played_dim_text:
         _veil()
+    if late_corner:
+        _corner()
 
 
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,

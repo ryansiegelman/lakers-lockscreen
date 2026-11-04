@@ -586,24 +586,36 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         ss = c.ss
         tmp = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
         td = ImageDraw.Draw(tmp)
-        # Pillow draws a rounded-rect outline INWARD from the bounds, so the
-        # stroke occupies rad-bw..rad, not rad-bw/2..rad+bw/2. Matching that
-        # exactly is what stops a hairline of white surviving on the outside.
         ox = off if lay.logo_stack else 0.0
-        bleed = 0.6                      # cover antialiasing on both edges
-        td.rounded_rectangle(
-            [(x0 + ox - bleed) * ss, (y0 + ox - bleed) * ss,
-             (x1 + ox + bleed) * ss, (y1 + ox + bleed) * ss],
-            radius=int(round((rad + bleed) * ss)), fill=accent)
         # On a played chip the band matches that chip's hairline, so the colour
         # reads as part of the same thinner frame rather than a leftover.
         aw = (h * lay.played_hairline
               if (quiet and lay.played_accent_hairline) else bw)
-        inner = aw + bleed               # erase BEYOND the stroke, not into it
-        td.rounded_rectangle(
-            [(x0 + inner) * ss, (y0 + inner) * ss,
-             (x1 - inner) * ss, (y1 - inner) * ss],
-            radius=int(round(max(0.0, rad - inner) * ss)), fill=(0, 0, 0, 0))
+        if ox == 0.0:
+            # The band replaces a stroke this function's caller already drew on
+            # the chip's own bounds, so draw it with the identical call and it
+            # lands on that stroke exactly. The grow-and-erase path below has to
+            # bleed past both edges to cover antialiasing, and a fixed bleed is
+            # a rounding error against the 11px border but a third again on
+            # either side of a 1.5px hairline - which put the colour wider than
+            # the line it was meant to be part of, and outside the chip's edge.
+            td.rounded_rectangle(
+                [x0 * ss, y0 * ss, x1 * ss, y1 * ss],
+                radius=int(round(rad * ss)), outline=accent,
+                width=max(1, int(round(aw * ss))))
+        else:
+            # Offset shape: the band spans two rounded rects about different
+            # centres, so it has to be built by subtraction.
+            bleed = 0.6                  # cover antialiasing on both edges
+            td.rounded_rectangle(
+                [(x0 + ox - bleed) * ss, (y0 + ox - bleed) * ss,
+                 (x1 + ox + bleed) * ss, (y1 + ox + bleed) * ss],
+                radius=int(round((rad + bleed) * ss)), fill=accent)
+            inner = aw + bleed           # erase BEYOND the stroke, not into it
+            td.rounded_rectangle(
+                [(x0 + inner) * ss, (y0 + inner) * ss,
+                 (x1 - inner) * ss, (y1 - inner) * ss],
+                radius=int(round(max(0.0, rad - inner) * ss)), fill=(0, 0, 0, 0))
         # Keep the bottom-right corner only.
         ccx, ccy = (x1 - rad) * ss, (y1 - rad) * ss
         td.rectangle([0, 0, ccx, tmp.size[1]], fill=(0, 0, 0, 0))

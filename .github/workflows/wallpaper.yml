@@ -1,12 +1,14 @@
 name: render wallpaper
 
-# Times are UTC, which is all cron understands. 06:00 UTC = 10pm PST, the
-# late run that catches West-coast games finishing after 10pm; 16:00 = 8am
-# PST, so the morning's board is ready before the day starts. Both land an
-# hour later in local terms over summer, when the coast is on PDT.
+# Wanted: 10pm and 10am Pacific. Cron only speaks UTC and does not follow
+# daylight saving, so a fixed pair of hours drifts by one every spring and
+# autumn. Instead this fires at the UTC hours that cover both halves of the
+# year - 05/17 while the coast is on PDT, 06/18 on PST - and the "Pacific
+# hour" job below drops whichever pair is an hour off today. Two of the four
+# run; the other two stop in a couple of seconds.
 on:
   schedule:
-    - cron: "0 6,16 * * *"
+    - cron: "0 5,6,17,18 * * *"
   workflow_dispatch:
   # A change to how the wallpaper is drawn should show up on the phone without
   # waiting for the next cron. The bot's own wallpaper commits use the default
@@ -25,7 +27,32 @@ permissions:
   contents: write
 
 jobs:
+  # Scheduled runs only go ahead on the hour that is actually 10pm or 10am in
+  # Los Angeles. A push or a manual run is never gated.
+  when:
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.hour.outputs.go }}
+    steps:
+      - id: hour
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+            echo "${{ github.event_name }}: running."
+            exit 0
+          fi
+          h=$(TZ=America/Los_Angeles date +%H)
+          if [ "$h" = "22" ] || [ "$h" = "10" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+            echo "${h}:00 in Los Angeles: running."
+          else
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            echo "${h}:00 in Los Angeles is neither 10am nor 10pm: stopping."
+          fi
+
   render:
+    needs: when
+    if: needs.when.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

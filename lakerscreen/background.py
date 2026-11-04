@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Optional, Tuple
 
 import numpy as np
@@ -9,6 +10,9 @@ from PIL import Image, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_BG_DIR = os.path.join(ROOT, "assets", "backgrounds")
+
+
+_HEX = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 
 
 def cover_crop(img: Image.Image, size: Tuple[int, int], align: str = "center") -> Image.Image:
@@ -124,7 +128,15 @@ def _cached_water(size: Tuple[int, int], seed: int) -> Image.Image:
 
 def load_background(size: Tuple[int, int], path: Optional[str] = None, seed: int = 7,
                     align: str = "center") -> Image.Image:
-    """User-supplied image if given, else assets/backgrounds/default.*, else synthetic."""
+    """A hex colour or image if given, else assets/backgrounds/default.*, else synthetic."""
+    if path and _HEX.match(path.strip()):
+        # A flat colour instead of a photo: "#000" or "#000000". Handy on an
+        # OLED screen, where true black is the pixel switched off.
+        h = path.strip().lstrip("#")
+        if len(h) == 3:
+            h = "".join(ch * 2 for ch in h)
+        return Image.new("RGB", size, tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)))
+
     candidates = []
     if path:
         candidates.append(path)

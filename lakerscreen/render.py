@@ -1121,6 +1121,14 @@ def build(cfg: Config, ttl: Optional[int] = None
         fallback = next_month_with_games(games, want)
         if fallback:
             month_key, shown = fallback, games_in_month(games, fallback)
+    elif cfg.roll_when_done and not cfg.month and all(g.completed for g in shown):
+        # Every game this month has been played, so the board is a page of
+        # results with nothing left to look forward to. Move on to the next
+        # month that has basketball in it. A pinned month is left alone, since
+        # pinning is how you ask to look at a month that is already over.
+        fallback = next_month_with_games(games, month_key)
+        if fallback:
+            month_key, shown = fallback, games_in_month(games, fallback)
 
     single = 0 < len(shown) <= cfg.single_column_max
     if cfg.pad_odd_months and not single and len(shown) % 2 == 1:

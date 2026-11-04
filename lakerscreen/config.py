@@ -318,6 +318,8 @@ class Config:
     single_column_max: int = 8          # <= this many games render in one centred column
     scrim: float = 0.15                 # darkening behind the grid, 0..1
     month: Optional[str] = None         # "YYYY-MM" override; default = today
+    roll_when_done: bool = True         # once every game in the month has been
+                                        # played, show the next month instead
     show_month: bool = False            # print the month name above the wordmark
     palette: Palette = field(default_factory=Palette)
     layout: Layout = field(default_factory=Layout)

@@ -74,9 +74,11 @@ jobs:
         # PIN_MONTH pins the wallpaper to one month (YYYY-MM) for previewing a
         # month that is not the current one. Unset the repository variable and
         # the next run goes back to tracking today's month on its own.
+        # BACKGROUND does the same for the backdrop.
         run: |
           python generate.py \
             ${PIN_MONTH:+--month "$PIN_MONTH"} \
+            ${BACKGROUND:+--bg "$BACKGROUND"} \
             --device "${DEVICE:-iphone-17-pro}" \
             --font oswald.ttf \
             --font-variation Bold --font-variation-light Regular \
@@ -86,6 +88,9 @@ jobs:
         env:
           DEVICE: ${{ vars.DEVICE }}
           PIN_MONTH: ${{ vars.PIN_MONTH }}
+          # A hex colour such as "#000000", or a path to an image. Unset the
+          # repository variable and the next run goes back to the photo.
+          BACKGROUND: ${{ vars.BACKGROUND }}
 
       - name: Commit if changed
         run: |

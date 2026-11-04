@@ -206,8 +206,10 @@ class Layout:
     # recedes), "quiet" (keyline drops to grey), "both", "mark" (quiet, and
     # the W/L takes the result's colour), "dimlogo", "bar", "invert" or
     # "ghost".
-    played_style: str = "mark"
-    played_dim: float = 0.45           # how far a dimmed chip fades, 0-1
+    played_style: str = "both"
+    played_dim: float = 0.65           # how far a dimmed chip fades, 0-1
+    played_dim_text: bool = True       # the date and score fade with the rest;
+                                       # off, only the chip and crest recede
     played_bar: float = 0.085         # colour bar along a played chip's foot
     played_keyline: float = 0.00       # keyline level for a played chip, 0-1
     played_hairline: float = 0.009     # thin white line on its outer edge,
@@ -217,7 +219,7 @@ class Layout:
     # "none" leaves the W/L bare, "white" is a white disc with the result's
     # colour as the letter, "fill" is a gold/purple disc with a white letter,
     # and "dot" drops the letter entirely: the colour alone says win or loss.
-    played_badge: str = "dot"
+    played_badge: str = "none"
     played_badge_size: float = 0.50    # the dot's whole footprint, rim and
                                        # all, of the date's type size
     played_badge_ring: float = 0.00    # white rim, of that footprint. It eats

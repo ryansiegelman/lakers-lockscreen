@@ -429,12 +429,17 @@ def _ink_height(c: _Canvas, runs: Sequence[Run]) -> float:
     return bot - top
 
 
-def _mark_slot(c: _Canvas, cfg: Config, tsz: float):
+def _mark_slot(c: _Canvas, cfg: Config, tsz: float, letter: Optional[str] = None):
     """The W/L's font and the width the result line reserves for it.
 
     A badge reserves its disc's diameter rather than the glyph's width, and
     sets the letter smaller to leave a rim. Both the width solvers and the
     draw go through here, so a line is measured exactly as it is drawn.
+
+    Bare, the slot is that chip's own letter when one is named, and the wider
+    of W and L otherwise. The solvers want the wider, so the month's target
+    clears the worst case; the draw wants the real one, because reserving W's
+    width for an L left the loss lines starting a glyph short of the wins.
     """
     lay = cfg.layout
     badge = lay.played_badge if lay.played_style == "mark" else "none"
@@ -447,7 +452,8 @@ def _mark_slot(c: _Canvas, cfg: Config, tsz: float):
     else:
         msz = tsz * lay.logo_mark_size
         mfont = assets.font_file(lay.logo_mark_font, int(round(msz * c.ss))) or c.font(msz)
-        slot = max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0))
+        slot = (c.text_width(letter, mfont, 0) if letter
+                else max(c.text_width("W", mfont, 0), c.text_width("L", mfont, 0)))
     return badge, mfont, slot, msz
 
 
@@ -728,14 +734,20 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         c.text((dcx, dcy), g.opponent, cfont,
                pal.text if lay.logo_disc_invert else pal.badge_text, anchor="mc")
 
-    if played and lay.played_style in ("dim", "both"):
-        # Fade the finished chip back, so the games still to come read first.
+    def _veil():
+        """Fade the finished chip back, so the games still to come read first."""
         ss = c.ss
-        veil = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
-        ImageDraw.Draw(veil).rounded_rectangle(
+        v = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
+        ImageDraw.Draw(v).rounded_rectangle(
             [x0 * ss, y0 * ss, x1 * ss, y1 * ss], radius=int(round(rad * ss)),
             fill=(0, 0, 0, int(round(255 * lay.played_dim))))
-        c.layer.alpha_composite(veil)
+        c.layer.alpha_composite(v)
+
+    # Laid down before the text it should not touch, or after it when the whole
+    # chip is meant to recede together.
+    dimming = played and lay.played_style in ("dim", "both")
+    if dimming and not lay.played_dim_text:
+        _veil()
 
     if style == "bar":
         ss = c.ss
@@ -790,7 +802,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     # the disc's diameter — not the glyph — is what the line reserves for it.
     badge, mfont, slot, msz = ("none", None, 0.0, 0.0)
     if result_mark:
-        badge, mfont, slot, msz = _mark_slot(c, cfg, tsz)
+        badge, mfont, slot, msz = _mark_slot(c, cfg, tsz, result_mark)
     badge_d = slot if badge != "none" else 0.0
     mark_gap = tsz * lay.logo_mark_gap
 
@@ -877,6 +889,9 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     else:
         f_bot, tr_bot = _fit(bot_txt, w_bot)
         c.text((tcx, yb), bot_txt, f_bot, txt_col, tracking=tr_bot, anchor="mc")
+
+    if dimming and lay.played_dim_text:
+        _veil()
 
 
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,

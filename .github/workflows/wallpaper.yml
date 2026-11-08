@@ -1,18 +1,19 @@
 name: render wallpaper
 
-# Wanted: 10:30pm and 6am Pacific. Cron only speaks UTC and does not follow
-# daylight saving, so each target needs the hour that matches it under PST and
-# the one that matches under PDT. The hour either side goes in too, because
-# GitHub treats scheduled runs as best effort: they arrive late, and some do
-# not arrive at all. An earlier version gated on the Pacific hour and threw
-# away a run that turned up nearly seven hours late, which is how the phone
-# went a whole day without updating. Nothing is gated now - a run renders
-# whenever it lands, and "Commit if changed" below means the ones with nothing
-# new to say cost a few seconds and write nothing.
+# Tip-offs run from noon to 8pm Pacific and a game takes about two and a half
+# hours, so a final lands somewhere between 2:30pm and 11pm. This polls every
+# ten minutes across that whole window, in UTC wide enough to cover it under
+# both PST and PDT, so the board catches up within about ten minutes of the
+# buzzer. Nothing is gated on the clock: GitHub treats cron as best effort and
+# an earlier version threw away a run that arrived seven hours late. Nothing is
+# wasted either - "Commit if changed" writes nothing when the picture has not
+# moved, which is what most of these runs will find. The repository is public,
+# so the minutes are free.
 on:
   schedule:
-    - cron: "30 5,6,7 * * *"      # 10:30pm Pacific, and an hour either side
-    - cron: "0 13,14,15 * * *"    # 6am Pacific, and an hour either side
+    - cron: "*/10 21-23 * * *"    # evening games, through midnight Pacific
+    - cron: "*/10 0-7 * * *"      # the rest of the night either side of DST
+    - cron: "0 14,15 * * *"       # a morning backstop, ~6am Pacific
   workflow_dispatch:
   # A change to how the wallpaper is drawn should show up on the phone without
   # waiting for the next cron. The bot's own wallpaper commits use the default

@@ -209,13 +209,14 @@ class Layout:
     # the W/L takes the result's colour), "dimlogo", "bar", "invert" or
     # "ghost".
     played_style: str = "both"
-    played_dim: float = 0.65           # how far a dimmed chip fades, 0-1
+    played_dim: float = 0.52           # how far a dimmed chip fades, 0-1
     played_dim_text: bool = True       # the date and score fade with the rest;
                                        # off, only the chip and crest recede
     played_bar: float = 0.085         # colour bar along a played chip's foot
     played_keyline: float = 0.00       # keyline level for a played chip, 0-1
     played_hairline: float = 0.009     # thin white line on its outer edge,
-    played_accent: bool = True         # keep the home/away cling after the game
+    played_accent: bool = False        # the home/away cling comes off once
+                                       # the game has been played
     # The W/L sits in a small disc rather than loose on the chip's black.
     # "none" leaves the W/L bare, "white" is a white disc with the result's
     # colour as the letter, "fill" is a gold/purple disc with a white letter,

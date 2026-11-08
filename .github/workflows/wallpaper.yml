@@ -72,11 +72,21 @@ jobs:
           # repository variable and the next run goes back to the photo.
           BACKGROUND: ${{ vars.BACKGROUND }}
 
+      - name: Stamp a version
+        # A few bytes next to the 2MB image, holding a hash of it. A phone can
+        # fetch this on every automation run for nothing, compare it to the
+        # last one it saw, and only pull the wallpaper when it has really
+        # changed. Hashing the picture rather than stamping the time means the
+        # file moves when the board moves and not once per run.
+        run: |
+          sha256sum docs/wallpaper.png | cut -c1-16 > docs/version.txt
+          echo "version $(cat docs/version.txt)"
+
       - name: Commit if changed
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/wallpaper.png
+          git add docs/wallpaper.png docs/version.txt
           git diff --staged --quiet && echo "no change" && exit 0
           git commit -m "wallpaper: $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push

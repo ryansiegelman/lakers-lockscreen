@@ -642,7 +642,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     if swap:
         bare_cx, lean = 1.0 - zone_f / 2.0, -lay.logo_bare_dx
     else:
-        bare_cx, lean = zone_f / 2.0, lay.logo_bare_dx
+        bare_cx, lean = zone_f / 2.0, (0.0 if lay.logo_bare_flush else lay.logo_bare_dx)
     dcx, dcy = x0 + w * (bare_cx if bare else lay.logo_disc_cx), (y0 + y1) / 2.0
     if lay.logo_accent == "ring":
         # Home/away reads as a colour ring around the disc.
@@ -689,19 +689,37 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 # is not cut off.
                 room = w * tune.get("mark_zone", tune.get("zone", lay.logo_bare_zone))
                 by_w = room * crest.height / crest.width
-                size = min(by_w, h * tune.get("bleed", lay.logo_bare_size))
+                if lay.logo_bare_flush:
+                    # Exactly the zone's width, whatever that costs in height,
+                    # times whatever this mark was tuned to. No cap: a cap
+                    # leaves a mark short of the zone line.
+                    size = by_w * tune.get("grow", lay.logo_bare_grow)
+                else:
+                    size = min(by_w, h * tune.get("bleed", lay.logo_bare_size))
                 # "zoom" pushes a mark past its zone so the zone's own crop
                 # takes the sides. A short, wide mark reads small at the width
                 # everyone shares; zooming it fills the chip's height instead,
                 # and the crop keeps its rendered width identical to the rest.
-                size *= tune.get("zoom", 1.0)
+                if not lay.logo_bare_flush:
+                    size *= tune.get("zoom", 1.0)
             k = (size / crest.height if lay.logo_bare_fill_height and not lay.logo_bare_ring
                  else size / max(crest.width, crest.height))
             cw_, ch_ = max(1, int(crest.width * k * ss)), max(1, int(crest.height * k * ss))
             m = crest.resize((cw_, ch_), Image.LANCZOS)
+            if lay.logo_bare_flush and tune.get("grow", lay.logo_bare_grow) > 1.0:
+                # Pin the right edge to the zone line and let the growth spill
+                # left, where the chip's own edge takes it. Nothing is ever
+                # cut off the right, and every mark ends at the same x.
+                mx = (x0 + w * zone_f) * ss - cw_ + h * tune.get("dx", 0.0) * ss
+            elif lay.logo_bare_flush:
+                # Smaller than the zone: nothing to crop, so centre it in the
+                # zone rather than leaving it hard against one side.
+                mx = ((x0 + w * zone_f / 2.0 + h * tune.get("dx", 0.0)) * ss
+                      - cw_ / 2.0)
+            else:
+                mx = (dcx + h * (lean + tune.get("dx", 0.0))) * ss - cw_ / 2.0
             tmp.alpha_composite(
-                m, (int(round((dcx + h * (lean + tune.get("dx", 0.0)))
-                              * ss - cw_ / 2.0)),
+                m, (int(round(mx)),
                     int(round((dcy + h * tune.get("dy", 0.0)) * ss - ch_ / 2.0))))
             mask = Image.new("L", c.layer.size, 0)
             inset = bw * 0.5
@@ -913,6 +931,43 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     else:
         f_bot, tr_bot = _fit(bot_txt, w_bot)
         c.text((tcx, yb), bot_txt, f_bot, txt_col, tracking=tr_bot, anchor="mc")
+
+    if lay.crest_label and bare and drawn:
+        # Centred on the chip, not on the artwork: vertically on the chip's
+        # own middle, horizontally on the space left of the schedule text.
+        # Placing it on the crest put it somewhere different on every mark,
+        # because each one is cropped differently by the chip and the zone.
+        ly = (y0 + y1) / 2.0 + h * lay.crest_label_dy
+        lx = (x0 + (tcx - target / 2.0)) / 2.0 + h * lay.crest_label_dx
+        pw, ph = h * lay.crest_label_w, h * lay.crest_label_h
+        rr = ph * lay.crest_label_radius
+        box = (lx - pw / 2.0, ly - ph / 2.0, lx + pw / 2.0, ly + ph / 2.0)
+        if lay.crest_label_ring > 0:
+            gw = ph * lay.crest_label_ring
+            c.rounded_rect((box[0] - gw, box[1] - gw, box[2] + gw, box[3] + gw),
+                           rr + gw, fill=pal.chip_border)
+        c.rounded_rect(box, rr, fill=pal.chip_fill)
+        lsz = h * lay.crest_label_size
+        code = lay.crest_label_code.get(g.opponent.upper(), g.opponent.upper())
+        tr = lsz * lay.crest_label_track
+        lf = c.font(lsz)
+        # The plate stays the one size on every chip, so a longer code sets
+        # itself smaller rather than widening its own plate or running out
+        # of it. Three letters are untouched; NOLA is the only four.
+        room = pw - 2.0 * (ph * 0.22)
+        while c.text_width(code, lf, tr) > room and lsz > 4:
+            lsz *= 0.95
+            tr = lsz * lay.crest_label_track
+            lf = c.font(lsz)
+        # Centre on the ink, not the advance width, which carries each glyph's
+        # side bearing and leaves the letters sitting left inside the plate.
+        adv = [assets.char_advance(lf, ch) / c.ss for ch in code]
+        xs, run = [], 0.0
+        for a in adv:
+            xs.append(run); run += a + tr
+        ink_mid = (xs[0] + lf.getbbox(code[0])[0] / c.ss
+                   + xs[-1] + lf.getbbox(code[-1])[2] / c.ss) / 2.0
+        c.text((lx - ink_mid, ly), code, lf, pal.text, tracking=tr, anchor="lc")
 
     if dimming and lay.played_dim_text:
         _veil()

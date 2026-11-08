@@ -149,43 +149,45 @@ class Layout:
     crest_dir: str = "assets/crests"    # hand-picked per-team marks, white on transparent
     # Per-team overrides for the crest in the disc. "fit" replaces logo_crest_fit;
     # "dx"/"dy" nudge the mark, as a share of the disc diameter.
+    # Every mark picked team by team: how far past the zone it is
+    # scaled, and any nudge. The right edge stays pinned to the zone
+    # line either way, so none is ever cut off on that side.
     crest_tune: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
-        "ATL": {},
-        "BKN": {"bleed": 1.06},
-        "BOS": {"fit": 0.66},
-        "CHA": {"fit": 0.66, "dy": -0.07},
-        "CHI": {"fit": 0.66, "dy": -0.07},
-        "CLE": {"fit": 0.62},
-        "DAL": {"bleed": 1.45},
-        "DEN": {},
-        "DET": {"fit": 0.66, "dy": 0.22},
-        "GSW": {"bleed": 0.985},
-        "HOU": {"dy": 0.15},
-        "IND": {"bleed": 1.10},
-        "LAC": {},
-        "MEM": {},
-        "MIA": {"fit": 0.68},
-        "MIL": {"bleed": 1.62, "dy": -0.08},
-        "MIN": {"dy": 0.07},
-        "NOL": {},
-        "NYK": {"fit": 0.66},
-        "OKC": {"zoom": 1.42},
-        "ORL": {"dy": -0.07},
-        "PHI": {"bleed": 0.75, "dx": -0.02},
-        "PHO": {"dy": 0.07},
-        "POR": {"fit": 0.66},
-        "SAC": {"dy": 0.17},
-        "SAS": {"fit": 0.66, "dy": 0.07},
-        "TOR": {"zoom": 1.32, "dy": 0.10},
-        "WAS": {"fit": 0.72, "dy": 0.07},
+        "ATL": {"grow": 0.911},
+        "BKN": {"grow": 1.011},
+        "BOS": {"grow": 0.883, "dy": 0.0578, "dx": 0.0733},
+        "CHA": {"grow": 1.150, "dy": -0.1800},
+        "CHI": {"grow": 1.150},
+        "CLE": {"grow": 1.000},
+        "DAL": {"grow": 1.000},
+        "DEN": {"grow": 1.150},
+        "DET": {"grow": 1.150},
+        "GSW": {"grow": 0.994},
+        "HOU": {"grow": 0.806, "dy": 0.2000},
+        "IND": {"grow": 0.800},
+        "LAC": {"grow": 1.076, "dy": -0.0600, "dx": 0.0489},
+        "MEM": {"grow": 1.150},
+        "MIA": {"grow": 1.000},
+        "MIL": {"grow": 1.000, "dy": -0.1230, "dx": 0.0800},
+        "MIN": {"grow": 1.150, "dy": -0.0900},
+        "NOL": {"grow": 1.150, "dy": 0.0900},
+        "NYK": {"grow": 1.000},
+        "OKC": {"grow": 1.600},
+        "ORL": {"grow": 1.150},
+        "PHI": {"grow": 0.911},
+        "PHO": {"grow": 1.150},
+        "POR": {"grow": 1.000},
+        "SAC": {"grow": 1.300},
+        "SAS": {"grow": 1.000},
+        "TOR": {"grow": 1.150},
+        "UTA": {"grow": 1.000},
+        "WAS": {"grow": 1.000},
     })
     # Marks that are already a ring. The chip's own keyline is still drawn, and
     # sits over the mark's thinner ring, so every chip's border matches while the
     # mark stays whole. Sized by radius, not by bounding box: the value is how
     # much of the radius the furthest ink reaches.
-    crest_as_disc: Dict[str, float] = field(default_factory=lambda: {
-        "GSW": 1.00,
-    })
+    crest_as_disc: Dict[str, float] = field(default_factory=lambda: {})
     logo_code_fit: float = 0.620        # share of the disc's inner width the code may span
     logo_disc_invert: bool = True       # dark disc, white keyline, white code
     logo_disc_border: float = 0.045     # that keyline, of disc diameter
@@ -246,6 +248,36 @@ class Layout:
     # width, so all 29 are cut the same way.
     logo_bare_fill_height: bool = True
     logo_bare_zone: float = 0.400       # the crest's share of chip width
+    # Every mark drawn exactly the zone's width and centred in it: flush at
+    # the zone line on the right, running out to the chip's edge on the left,
+    # so all 29 occupy the identical patch of chip and none is cut off on the
+    # right. Overrides bleed, zoom and the left lean, which are what used to
+    # leave some marks short of the zone and all of them sitting left of it.
+    logo_bare_flush: bool = True
+    logo_bare_grow: float = 1.000       # with flush on, scale every mark
+                                        # past the zone by this much. The
+                                        # right edge stays pinned to the
+                                        # zone line, so the growth is cut
+                                        # off the left and the top only.
+
+    # A small plate over the middle of the crest carrying the team's code, so
+    # a mark you do not recognise still tells you who it is.
+    crest_label: bool = True
+    crest_label_w: float = 0.560        # plate width, of chip height
+    crest_label_h: float = 0.230        # plate height, of chip height
+    crest_label_radius: float = 0.440    # corner radius, of plate height
+    crest_label_size: float = 0.160     # letter size, of chip height
+    crest_label_track: float = 0.030    # letter spacing, of letter size
+    crest_label_ring: float = 0.075     # white keyline on the plate, of its height
+    crest_label_dx: float = 0.000       # nudge the plate off that centre
+    # What the plate says, where the feed's own code is not what you want.
+    # Keyed by the schedule abbreviation, so the crest and the fixture keep
+    # looking themselves up by that and only the lettering changes.
+    crest_label_code: Dict[str, str] = field(default_factory=lambda: {
+        "NOL": "NOLA",                  # the NBA writes New Orleans NOP
+        "PHO": "PHX",                   # and Phoenix PHX
+    })
+    crest_label_dy: float = 0.000
     logo_bare_ring: float = 0.000       # ring diameter, of chip height
     logo_bare_ring_w: float = 0.0266    # stroke, of ring diameter
     logo_bare_in_ring: float = 0.860    # crest size inside the ring

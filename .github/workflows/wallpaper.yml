@@ -12,7 +12,14 @@ name: render wallpaper
 on:
   schedule:
     - cron: "*/10 21-23 * * *"    # evening games, through midnight Pacific
-    - cron: "*/10 0-7 * * *"      # the rest of the night either side of DST
+    - cron: "*/10 0-9 * * *"      # the rest of the night, and past the date
+                                  # flip. Today's game is lit by calendar day,
+                                  # so the board is wrong from local midnight
+                                  # until the next run. Midnight Pacific is
+                                  # 07:00 UTC on PDT and 08:00 UTC on PST, and
+                                  # this runs through 09:50 either way, so the
+                                  # flip is picked up within ten minutes and
+                                  # the board is right before anyone is awake.
     - cron: "0 14,15 * * *"       # a morning backstop, ~6am Pacific
   workflow_dispatch:
   # A change to how the wallpaper is drawn should show up on the phone without

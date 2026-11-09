@@ -6,7 +6,7 @@ import math
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 try:
     from zoneinfo import ZoneInfo
@@ -520,8 +520,27 @@ def _logo_line_target(c: _Canvas, cfg: Config, h: float, games, scale: float) ->
     return max((_logo_line_width(c, cfg, g, h, font, scale) for g in games), default=0.0)
 
 
+ACCENT_STYLES = ("accent", "accentdeep", "accentblock", "accenttint", "accentgrad")
+
+
+def _mix(col, k: float, toward=(0, 0, 0)):
+    """Blend a colour toward another, keeping its alpha."""
+    return tuple(int(round(col[i] * k + toward[i] * (1.0 - k))) for i in range(3)) + \
+        ((col[3],) if len(col) > 3 else (255,))
+
+
+def _luma(col) -> float:
+    return 0.2126 * col[0] + 0.7152 * col[1] + 0.0722 * col[2]
+
+
+def _ink_on(col, pal):
+    """Black on a light body, white on a dark one. Gold and purple sit either
+    side of the line, so one rule covers home and away both."""
+    return pal.badge_text if _luma(col) > 110 else pal.text
+
+
 def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
-                    line_target: float = 0.0) -> None:
+                    line_target: float = 0.0, is_today: bool = False) -> None:
     """Stacked card, drawn to the proportions measured off the reference."""
     lay, pal = cfg.layout, cfg.palette
     x0, y0, x1, y1 = box
@@ -536,6 +555,39 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     # Home or away stops mattering once the game is over: the cling comes off
     # and the result's own colour carries the chip instead.
     show_accent = not (played and not lay.played_accent)
+
+    # Today's game. Every treatment is one named style, so only one is ever
+    # live and the rest cost nothing.
+    ts = lay.today_style if is_today else "none"
+    if ts in ACCENT_STYLES:
+        # The body is now carrying home/away, so the corner cling would be
+        # saying it twice.
+        show_accent = False
+    # "focus" works the other way round: today is left alone and the other
+    # chips still to come are veiled back, so today is what is left at full
+    # strength.
+    fade_other = (lay.today_style == "focus" and not is_today and not played)
+
+    if ts == "glow":
+        # A soft gold bloom under the chip. Drawn into its own layer and
+        # blurred, so it reads as light off the chip rather than a second
+        # outline round it.
+        ss = c.ss
+        r = h * lay.today_glow
+        gl = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
+        ImageDraw.Draw(gl).rounded_rectangle(
+            [(x0 - r * 0.45) * ss, (y0 - r * 0.45) * ss,
+             (x1 + r * 0.45) * ss, (y1 + r * 0.45) * ss],
+            radius=int(round((rad + r * 0.45) * ss)),
+            fill=tuple(pal.gold[:3]) + (int(round(255 * lay.today_glow_alpha)),))
+        gl = gl.filter(ImageFilter.GaussianBlur(r * ss * 0.5))
+        c.layer.alpha_composite(gl)
+    elif ts == "halo":
+        # The sticker-stack offset stroke, in gold: a second card peeking out
+        # from behind this one.
+        ho = h * lay.today_halo
+        c.rounded_rect((x0 + ho, y0 + ho, x1 + ho, y1 + ho), rad,
+                       fill=None, outline=pal.gold, width=bw)
 
     if lay.logo_accent == "gap" and show_accent:
         # Colour fills the whole offset shape; the chip then masks all of it
@@ -559,8 +611,59 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         k = lay.played_keyline
         keyline = tuple(int(round(v * k)) for v in pal.chip_border[:3]) + (255,)
     fill = None if ghost else (pal.chip_border if invert else pal.chip_fill)
+    if ts == "keyline":
+        keyline = pal.gold
+    elif ts == "fill":
+        fill = lay.today_fill
+    elif ts == "invert":
+        fill, txt_col = pal.gold, pal.badge_text
+    elif ts in ACCENT_STYLES:
+        if ts == "accentdeep":
+            body = _mix(accent, lay.today_accent_mix)
+        elif ts == "accenttint":
+            # Laid over the chip's own black rather than replacing it, so the
+            # colour reads as a tint of the board's own material.
+            body = _mix(accent, lay.today_accent_tint,
+                        toward=pal.chip_fill[:3])
+        else:
+            body = accent
+        if lay.today_accent_ink == "white":
+            # Held white on purple and gold both. A light accent is mixed
+            # back toward black first, or the white has nothing to sit on.
+            if _luma(body) > 110 and lay.today_accent_light_mix < 1.0:
+                body = _mix(body, lay.today_accent_light_mix)
+            txt_col = pal.text
+        else:
+            txt_col = _ink_on(body, pal)
+        fill = body
+        if ts == "accentblock":
+            # The white border goes too: the chip becomes one solid shape.
+            keyline = body
     c.rounded_rect((x0, y0, x1, y1), rad,
                    fill=fill, outline=keyline, width=bw)
+    if ts == "accentgrad":
+        # The colour deepens away from the bottom-right, so it still reads as
+        # having come from the corner the cling used to sit in.
+        ss = c.ss
+        far = _mix(accent, lay.today_accent_grad, toward=pal.chip_fill[:3])
+        gw, gh = 64, 64
+        ramp = Image.new("RGBA", (gw, gh))
+        pix = ramp.load()
+        for gy in range(gh):
+            for gx in range(gw):
+                t = ((gx / (gw - 1.0)) + (gy / (gh - 1.0))) / 2.0   # 0 at top-left
+                pix[gx, gy] = _mix(accent, t, toward=far[:3])
+        ramp = ramp.resize((int(round((x1 - x0) * ss)), int(round((y1 - y0) * ss))),
+                           Image.BILINEAR)
+        gm = Image.new("L", c.layer.size, 0)
+        ImageDraw.Draw(gm).rounded_rectangle(
+            [x0 * ss, y0 * ss, x1 * ss, y1 * ss], radius=int(round(rad * ss)), fill=255)
+        glay = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
+        glay.paste(ramp, (int(round(x0 * ss)), int(round(y0 * ss))))
+        glay.putalpha(ImageChops.multiply(glay.getchannel("A"), gm))
+        c.layer.alpha_composite(glay)
+        # The border was covered by the ramp; put it back.
+        c.rounded_rect((x0, y0, x1, y1), rad, fill=None, outline=keyline, width=bw)
     if quiet and lay.played_hairline > 0:
         # A hairline on the outer edge, so the chip still has a shape against
         # the photo while its keyline stays dark.
@@ -736,8 +839,22 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                     md.rectangle([(x0 + w * tune.get("mark_zone", zone_f)) * ss, 0,
                                   c.layer.size[0], c.layer.size[1]], fill=0)
             tmp.putalpha(ImageChops.multiply(tmp.getchannel("A"), mask))
+            recolour = None
             if invert:
-                solid = Image.new("RGBA", tmp.size, tuple(pal.chip_fill[:3]) + (255,))
+                recolour = pal.chip_fill
+            elif ts == "crest":
+                recolour = pal.gold
+            elif (ts in ACCENT_STYLES and lay.today_accent_crest == "ink"
+                  and txt_col != pal.text):
+                # Opt-in only. Left alone, the mark is the same artwork here
+                # as on every other chip, which is the point of it.
+                recolour = txt_col
+            elif ts == "invert":
+                # The mark is white; on a gold chip it would disappear, so it
+                # takes the chip's own ink colour instead.
+                recolour = pal.badge_text
+            if recolour is not None:
+                solid = Image.new("RGBA", tmp.size, tuple(recolour[:3]) + (255,))
                 solid.putalpha(tmp.getchannel("A"))
                 tmp = solid
             elif style == "dimlogo":
@@ -805,6 +922,10 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     tsz = h * (lay.logo_bare_type if bare else lay.logo_type) * scale
     font = c.font(tsz)
     top_txt = _fmt_date_style(g, cfg.date_format)
+    if ts == "today":
+        # The word carries the day, so the digits are not needed. It is set to
+        # the same width as every other date line, so the grid stays flush.
+        top_txt = "TODAY"
     result_mark = result_score = None
     if g.completed and g.won is not None:
         result_mark = "W" if g.won else "L"
@@ -930,7 +1051,9 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                tracking=tr, anchor="lc")
     else:
         f_bot, tr_bot = _fit(bot_txt, w_bot)
-        c.text((tcx, yb), bot_txt, f_bot, txt_col, tracking=tr_bot, anchor="mc")
+        c.text((tcx, yb), bot_txt, f_bot,
+               pal.gold if ts == "goldtime" else txt_col,
+               tracking=tr_bot, anchor="mc")
 
     if lay.crest_label and bare and drawn:
         # Centred on the chip, not on the artwork: vertically on the chip's
@@ -969,10 +1092,29 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                    + xs[-1] + lf.getbbox(code[-1])[2] / c.ss) / 2.0
         c.text((lx - ink_mid, ly), code, lf, pal.text, tracking=tr, anchor="lc")
 
+    if ts == "rule":
+        # A short gold rule under the pair of lines, set to a share of the
+        # width they were justified to so it reads as part of that block.
+        rw = target * lay.today_rule_w
+        rh = h * lay.today_rule_h
+        ry = y0 + h * lay.today_rule_y
+        c.rounded_rect((tcx - rw / 2.0, ry - rh / 2.0, tcx + rw / 2.0, ry + rh / 2.0),
+                       rh / 2.0, fill=pal.gold)
+
     if dimming and lay.played_dim_text:
         _veil()
     if late_corner:
         _corner()
+
+    if fade_other:
+        # "focus": the other games still to come step back, so today is the
+        # one chip at full strength.
+        ss = c.ss
+        v = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
+        ImageDraw.Draw(v).rounded_rectangle(
+            [x0 * ss, y0 * ss, x1 * ss, y1 * ss], radius=int(round(rad * ss)),
+            fill=(0, 0, 0, int(round(255 * lay.today_dim))))
+        c.layer.alpha_composite(v)
 
 
 def _draw_chip(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
@@ -1197,6 +1339,12 @@ def build(cfg: Config, ttl: Optional[int] = None
     shown_season = shown[0].season if shown else season
     record = season_record(games, shown_season, cfg.record_includes_postseason)
 
+    # Which calendar day is "today" in the wallpaper's own timezone. A pinned
+    # month is still checked against the real date, so pinning a past month
+    # highlights nothing rather than highlighting the wrong chip.
+    tz = ZoneInfo(cfg.timezone) if ZoneInfo else timezone.utc
+    today = datetime.now(tz).date()
+
     base = background.load_background((W, H), cfg.background, align=cfg.background_align)
     base = background.apply_scrim(base, cfg.scrim, lay.grid_top, lay.record_y)
     c = _Canvas((W, H))
@@ -1238,7 +1386,7 @@ def build(cfg: Config, ttl: Optional[int] = None
             y0 = start_y + row * pitch + (pitch - chip_h) / 2.0
             if cfg.chip_style == "logo":
                 _draw_chip_logo(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale,
-                                logo_target)
+                                logo_target, g.start_local.date() == today)
             else:
                 _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale,
                            tag_w, line_target, tag_h_px, tag_letter_px)

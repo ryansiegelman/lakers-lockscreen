@@ -293,6 +293,58 @@ class Layout:
                                         # two lines may be set to reach the
                                         # other's width before tracking takes over
     time_compact: bool = False          # 4PM rather than 4:00PM on the hour
+    # How the chip for a game happening TODAY is set apart from the rest.
+    # "none" treats it like any other. The rest are the candidates:
+    #   keyline  - the chip's white border is drawn in gold
+    #   halo     - a gold stroke offset behind the chip, sticker-stack style
+    #   glow     - a soft gold bloom radiating out from the chip
+    #   today    - the date line reads TODAY instead of MON, 11/9
+    #   goldtime - the tip-off time is set in gold
+    #   fill     - the chip's black body becomes Lakers purple
+    #   crest    - the opponent's mark is rendered in gold
+    #   rule     - a short gold rule under the date and time
+    #   invert   - gold chip, black type
+    #   focus    - today keeps full strength; every other upcoming chip is
+    #              veiled back a little
+    #   accent      - the chip is filled with its own home/away colour and the
+    #                 corner cling comes off, the fill having taken its job
+    #   accentdeep  - the same, mixed back toward black so the colour sits
+    #                 down into the board rather than glowing off it
+    #   accentblock - the same, and the white border goes too: one solid
+    #                 shape of colour
+    #   accenttint  - the chip keeps its black, with the colour laid over it
+    #                 at part strength
+    #   accentgrad  - the fill deepens toward the bottom-right, so the colour
+    #                 still reads as coming from where the cling was
+    today_style: str = "accent"
+    # Whose contrast the type and the crest follow on an accent-filled chip.
+    # "auto" flips them to black on a light body (gold) and leaves them white
+    # on a dark one (purple). "white" keeps them white on both, so today's
+    # chip is the same object in either colour and only the colour moves.
+    today_accent_ink: str = "white"
+    # The crest on an accent-filled chip. "original" leaves the team's own
+    # mark exactly as it is drawn on every other chip; "ink" flips it with
+    # the type, which keeps it visible on a light body at the cost of the
+    # mark no longer matching itself elsewhere on the board.
+    today_accent_crest: str = "original"
+    # White on full-strength gold measures about 1.7:1. This mixes a LIGHT
+    # accent back toward black when the ink is white, so the home version
+    # holds up; 1.0 leaves the official colour exactly as it is.
+    today_accent_light_mix: float = 0.58
+    today_accent_mix: float = 0.62     # "accentdeep": how far toward black
+    today_accent_tint: float = 0.46    # "accenttint": the colour's strength
+                                       # over the chip's own black
+    today_accent_grad: float = 0.38    # "accentgrad": the colour's strength
+                                       # at the far (top-left) corner
+    today_halo: float = 0.085          # halo offset/stroke, of chip height
+    today_glow: float = 0.230          # bloom radius, of chip height
+    today_glow_alpha: float = 0.70     # bloom strength, 0-1
+    today_fill: RGBA = (46, 20, 72, 236)   # the "fill" body colour
+    today_rule_y: float = 0.885        # rule centre, of chip height
+    today_rule_h: float = 0.040        # rule thickness, of chip height
+    today_rule_w: float = 0.620        # rule width, of the text block's width
+    today_dim: float = 0.300           # how far "focus" veils the other
+                                       # upcoming chips, 0-1
     logo_disc: float = 0.619            # white disc diameter
     logo_disc_cx: float = 0.191         # disc centre, of chip width
     logo_text_cx: float = 0.622         # text block centre, of chip width

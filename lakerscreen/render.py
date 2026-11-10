@@ -559,6 +559,14 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     # Today's game. Every treatment is one named style, so only one is ever
     # live and the rest cost nothing.
     ts = lay.today_style if is_today else "none"
+    ps = lay.today_plate if is_today else "none"
+    if ps != "none" and not lay.today_plate_cling:
+        # The plate is carrying home/away now, so the corner cling would be
+        # saying it twice - the same trade the accent fills make.
+        show_accent = False
+    if lay.crest_label_accent:
+        # Board-wide: every plate carries it, so no chip keeps a cling.
+        show_accent = False
     if ts in ACCENT_STYLES:
         # The body is now carrying home/away, so the corner cling would be
         # saying it twice.
@@ -1062,14 +1070,53 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         # because each one is cropped differently by the chip and the zone.
         ly = (y0 + y1) / 2.0 + h * lay.crest_label_dy
         lx = (x0 + (tcx - target / 2.0)) / 2.0 + h * lay.crest_label_dx
+        # Today can be marked here instead of on the chip's body: the plate is
+        # the one small shape on the chip that is already an object in its own
+        # right, so colouring it reads as a state rather than a redesign.
+        # On the plate's black, official purple runs about 1.9:1; the lifted
+        # one the bare W/L uses is what stays legible at arm's length.
+        accent_ink = pal.gold if g.is_home else pal.loss_ink
+
         pw, ph = h * lay.crest_label_w, h * lay.crest_label_h
+        if ps == "grow":
+            pw *= lay.today_plate_grow
+            ph *= lay.today_plate_grow
         rr = ph * lay.crest_label_radius
         box = (lx - pw / 2.0, ly - ph / 2.0, lx + pw / 2.0, ly + ph / 2.0)
         if lay.crest_label_ring > 0:
             gw = ph * lay.crest_label_ring
-            c.rounded_rect((box[0] - gw, box[1] - gw, box[2] + gw, box[3] + gw),
-                           rr + gw, fill=pal.chip_border)
-        c.rounded_rect(box, rr, fill=pal.chip_fill)
+            if ps == "halo":
+                # A band of colour outside the white keyline, so the plate
+                # keeps its own edge and the colour reads as added to it.
+                hw = gw * lay.today_plate_halo
+                c.rounded_rect((box[0] - gw - hw, box[1] - gw - hw,
+                                box[2] + gw + hw, box[3] + gw + hw),
+                               rr + gw + hw, fill=accent)
+            rw_mult, ring_col = 1.0, pal.chip_border
+            if lay.crest_label_accent:
+                rw_mult, ring_col = lay.crest_label_accent_w, accent
+            if ps in ("thickring", "whitepill"):
+                rw_mult, ring_col = lay.today_plate_thick, accent
+            elif ps in ("ring", "both"):
+                ring_col = accent
+            elif ps == "goldring":
+                ring_col = pal.gold
+            rw = gw * rw_mult
+            c.rounded_rect((box[0] - rw, box[1] - rw, box[2] + rw, box[3] + rw),
+                           rr + rw, fill=ring_col)
+        plate_col, plate_tinted = pal.chip_fill, False
+        if lay.crest_label_invert:
+            # White pill, board-wide. The code flips to black with it, below.
+            plate_col, plate_tinted = pal.chip_border, True
+        if ps in ("plate", "both", "grow"):
+            plate_col, plate_tinted = accent, True
+        elif ps == "goldplate":
+            plate_col, plate_tinted = pal.gold, True
+        elif ps == "whitepill":
+            plate_col, plate_tinted = pal.chip_border, True
+        elif ps == "white":
+            plate_col, plate_tinted = pal.chip_border, True
+        c.rounded_rect(box, rr, fill=plate_col)
         lsz = h * lay.crest_label_size
         code = lay.crest_label_code.get(g.opponent.upper(), g.opponent.upper())
         tr = lsz * lay.crest_label_track
@@ -1090,7 +1137,18 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             xs.append(run); run += a + tr
         ink_mid = (xs[0] + lf.getbbox(code[0])[0] / c.ss
                    + xs[-1] + lf.getbbox(code[-1])[2] / c.ss) / 2.0
-        c.text((lx - ink_mid, ly), code, lf, pal.text, tracking=tr, anchor="lc")
+        if ps == "letters":
+            code_col = accent_ink
+        elif ps == "white":
+            # The code itself carries home/away on a white plate. Purple holds
+            # there; gold against white is close to invisible, which is the
+            # trade this option is for showing.
+            code_col = accent
+        elif plate_tinted:
+            code_col = _ink_on(plate_col, pal)
+        else:
+            code_col = pal.text
+        c.text((lx - ink_mid, ly), code, lf, code_col, tracking=tr, anchor="lc")
 
     if ts == "rule":
         # A short gold rule under the pair of lines, set to a share of the

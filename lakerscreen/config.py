@@ -316,7 +316,7 @@ class Layout:
     #                 at part strength
     #   accentgrad  - the fill deepens toward the bottom-right, so the colour
     #                 still reads as coming from where the cling was
-    today_style: str = "accent"
+    today_style: str = "none"
     # Whose contrast the type and the crest follow on an accent-filled chip.
     # "auto" flips them to black on a light body (gold) and leaves them white
     # on a dark one (purple). "white" keeps them white on both, so today's
@@ -327,6 +327,38 @@ class Layout:
     # the type, which keeps it visible on a light body at the cost of the
     # mark no longer matching itself elsewhere on the board.
     today_accent_crest: str = "original"
+    # Today marked on the code plate alone - the small ringed pill over the
+    # crest - leaving the chip's own black alone. Independent of today_style.
+    #   plate      - the plate fills with the home/away colour
+    #   ring       - its white keyline takes that colour instead
+    #   both       - keyline and plate together
+    #   letters    - plate stays black, the code itself takes the colour
+    #   halo       - a second ring of colour outside the white one
+    #   thickring  - the keyline in colour, at double weight
+    #   goldplate  - the plate is gold whatever the fixture
+    #   goldring   - the keyline is gold whatever the fixture
+    #   grow       - coloured plate, set larger
+    #   white      - white plate, the code in colour
+    #   whitepill  - white plate, black code, thick keyline in colour
+    # Home/away carried by the code plate's keyline on EVERY chip, with the
+    # corner cling dropped board-wide - the same idea as today_plate
+    # "thickring", applied as the general rule rather than as today's mark.
+    # With this on, today needs its own marker again; today_plate still
+    # applies over the top.
+    crest_label_accent: bool = True
+    # White pill with black letters, board-wide. Pairs with crest_label_accent
+    # so the coloured keyline is what separates it from the white crest it
+    # sits on.
+    crest_label_invert: bool = False
+    crest_label_accent_w: float = 2.10     # that keyline's weight multiple
+    today_plate: str = "none"
+    # With the plate marking today in the home/away colour, the corner cling
+    # is the same fact twice. False pulls it from today's chip only; every
+    # other chip keeps its own.
+    today_plate_cling: bool = False
+    today_plate_grow: float = 1.22     # "grow": plate size against its normal
+    today_plate_thick: float = 2.10    # "thickring": keyline weight multiple
+    today_plate_halo: float = 1.15     # "halo": the outer ring, of the white
     # Mixes a LIGHT accent back toward black when the ink is white. 1.0, the
     # setting here, leaves the official colour exactly as it is, so the fill
     # matches the cling value for value - which is the point - at the cost of

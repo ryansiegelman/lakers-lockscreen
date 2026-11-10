@@ -1095,6 +1095,8 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             rw_mult, ring_col = 1.0, pal.chip_border
             if lay.crest_label_accent:
                 rw_mult, ring_col = lay.crest_label_accent_w, accent
+                if played:
+                    rw_mult = lay.crest_label_accent_played
             if ps in ("thickring", "whitepill"):
                 rw_mult, ring_col = lay.today_plate_thick, accent
             elif ps in ("ring", "both"):

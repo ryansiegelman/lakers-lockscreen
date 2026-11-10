@@ -351,6 +351,10 @@ class Layout:
     # sits on.
     crest_label_invert: bool = False
     crest_label_accent_w: float = 2.10     # that keyline's weight multiple
+    # The same keyline on a finished game. The veil already takes its colour
+    # down; thinning it as well lets a played chip step further back without
+    # losing the fixture. 1.00 is the weight the plain white keyline uses.
+    crest_label_accent_played: float = 0.70
     today_plate: str = "none"
     # With the plate marking today in the home/away colour, the corner cling
     # is the same fact twice. False pulls it from today's chip only; every

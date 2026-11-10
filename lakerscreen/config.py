@@ -327,10 +327,12 @@ class Layout:
     # the type, which keeps it visible on a light body at the cost of the
     # mark no longer matching itself elsewhere on the board.
     today_accent_crest: str = "original"
-    # White on full-strength gold measures about 1.7:1. This mixes a LIGHT
-    # accent back toward black when the ink is white, so the home version
-    # holds up; 1.0 leaves the official colour exactly as it is.
-    today_accent_light_mix: float = 0.58
+    # Mixes a LIGHT accent back toward black when the ink is white. 1.0, the
+    # setting here, leaves the official colour exactly as it is, so the fill
+    # matches the cling value for value - which is the point - at the cost of
+    # white-on-gold measuring about 1.7:1. Lower it if the home chip ever
+    # needs to be readable rather than matched: 0.58 gives 4.8:1.
+    today_accent_light_mix: float = 1.0
     today_accent_mix: float = 0.62     # "accentdeep": how far toward black
     today_accent_tint: float = 0.46    # "accenttint": the colour's strength
                                        # over the chip's own black

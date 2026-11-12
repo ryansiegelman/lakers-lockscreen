@@ -163,7 +163,7 @@ class Layout:
         "DEN": {"grow": 1.150},
         "DET": {"grow": 1.150, "dy": 0.2000, "optical": True},
         "GSW": {"grow": 0.994},
-        "HOU": {"grow": 0.806, "dy": 0.2000, "optical": True},
+        "HOU": {"grow": 0.806, "dy": 0.2000, "optical": True, "sdy": 0.030},
         "IND": {"grow": 0.800},
         "LAC": {"grow": 1.076, "dy": -0.0600, "dx": 0.0489},
         "MEM": {"grow": 1.150},

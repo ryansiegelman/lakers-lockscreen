@@ -161,9 +161,9 @@ class Layout:
         "CLE": {"grow": 1.000},
         "DAL": {"grow": 1.000},
         "DEN": {"grow": 1.150},
-        "DET": {"grow": 1.150, "dy": 0.2000},
+        "DET": {"grow": 1.150, "dy": 0.2000, "optical": True},
         "GSW": {"grow": 0.994},
-        "HOU": {"grow": 0.806, "dy": 0.2000},
+        "HOU": {"grow": 0.806, "dy": 0.2000, "optical": True},
         "IND": {"grow": 0.800},
         "LAC": {"grow": 1.076, "dy": -0.0600, "dx": 0.0489},
         "MEM": {"grow": 1.150},
@@ -209,6 +209,146 @@ class Layout:
     # the W/L takes the result's colour), "dimlogo", "bar", "invert" or
     # "ghost".
     played_style: str = "both"
+    # What a game in progress shows on its second line: "live", "now",
+    # "inplay", "time" (leave the tip-off time up) or "time_dot" (that
+    # time with a dot before it). The running score is not an option on
+    # purpose - see the note in render.py.
+    live_style: str = "live"
+    # A chip split three ways: the day and date stacked at the left, the
+    # crest large through the middle, the time or result at the right.
+    chip_split: bool = True 
+    # How the left block is composed. Each is a list of lines; "~" marks a
+    # rule drawn between them. Tokens: DAY (FRI), DATE (11/27), MON (NOV),
+    # NUM (27), MONDAY (NOV 27), DOTTED (11.27), D1 (F).
+    split_left_mode: str = "DAY|NUM" 
+    # The right block is built the same way, from the same machinery, so the
+    # two sides match in size and shape by construction. Tokens: TIME
+    # (7:00PM), HOUR (7:00), MERID (PM), WL (W), SCORE (124-118), US, THEM.
+    split_right_mode: str = "HOUR|MERID" 
+    split_right_played: str = "US|THEM" 
+    split_left_align: str = "centre"   # centre | left
+    split_line_ratio: float = 1.000    # second line, relative to the first
+    split_day_gold: bool = False       # the day in the home or away colour
+    split_date_match: bool = True      # set the day and the date to one
+                                       # width; off, each sits at its own
+    split_date_grow: float = 2.400     # how far the shorter date line may be
+                                       # set larger to meet the longer one
+                                       # before the rest becomes letter space
+    split_rule: bool = True # a colour rule under the time instead
+                                       # of the three-letter plate
+    split_rule_w: float = 1.000 # its length: of the text it sits
+                                       # under when split_rule_fit, else of
+                                       # the zone
+    split_rule_fit: bool = True # rule exactly as wide as the text
+    split_rule_left: bool = True # a matching white rule on the left
+    split_wl_ink: bool = False # set the W or L itself in gold or
+                                       # purple rather than white
+    split_rule_result: bool = False # on played chips colour it by the
+                                       # result rather than home/away
+    split_rule_h: float = 0.080 # its thickness, of chip height
+    split_rule_gap: float = 0.150      # below the text, of chip height
+    split_rule_pos: str = "between" # or "between" the two lines
+    split_rule_clear: float = 0.045 # the gap between a line's marks and
+                                       # the rule, of chip height. The same
+                                       # on both sides of both rules: the
+                                       # lines are placed off the rule, so
+                                       # a big date and a small day clear
+                                       # it by the same amount.
+    split_rule_dy: float = 0.000 # nudge the rule off the middle, of
+                                       # chip height. The lower line is the
+                                       # larger one, so a rule on the exact
+                                       # middle sits nearer to it.
+    split_inset: float = 0.090 # blocks held in from the chip edge
+    split_ref_left: str = "FRI|27"     # the pair the left sizes are solved
+                                       # from, so every chip matches it.
+                                       # Empty solves from the month, which
+                                       # sizes the date off the widest day
+                                       # (MON is 67% wider than FRI).
+    split_ref_right: str = ""          # same for the right block
+    # Rather than solve the right block on its own, take its sizes from the
+    # pair the left block solved: "big" is the left's larger line (the
+    # date), "small" its smaller (the day). So the time can be the big line
+    # with PM small, mirroring the day over the date.
+    # Which line of each block is the large one, for "block" squaring.
+    split_size_left: str = "small|big"
+    split_size_right: str = "big|small"
+    split_size_played_sq: str = "big|big"
+    # Squaring. Every line is set to one width, so both blocks and both
+    # rules are the same width. "month" holds one size per slot for the
+    # whole month and tracks the narrow ones out (FRI letterspaces to meet
+    # MON); "chip" sizes each line to the width instead, so nothing
+    # letterspaces but the day changes size from chip to chip. The two
+    # cannot both hold: MON is 67% wider than FRI at one size.
+    # "block": each block is set to one width, its large line filling that
+    # width and its small line centred under it — so both blocks and both
+    # rules match without letterspacing anything.
+    # "box": every block is set to the width of the reference pair, so the
+    # FRI 27 block is the box each of them fills.
+    # "rows": one size per row, shared by both blocks -- the top line of the
+    # left block is set at the same size as the top line of the right, so
+    # they sit on exactly the same level on every chip. Widths then follow
+    # the content, since MON has more letters than 02.
+    split_square: str = "box"    # "rows"|"box"|"block"|"month"|"chip"|"off"
+    # Each block is nudged so its marks centre on the chip rather than
+    # hanging off the rule: with a big date under a small day, equal
+    # clearances leave the left block sitting low. The nudge is clamped so
+    # clearances between the lines and the rule are untouched.
+    split_block_centre: float = 0.000
+    split_track_max: float = 0.000  # how much letterspacing may be used to
+                                    # make up a line's width, per gap, as a
+                                    # fraction of its size. Whatever the
+                                    # tracking cannot cover is made up by
+                                    # sizing, so a larger cap holds the
+                                    # levels and a smaller one holds the
+                                    # letterforms.
+    split_rows_track: bool = False  # in "rows", letterspace every line out
+                                    # to the rule's width. Keeps the levels
+                                    # and the letterforms; FRI reads F R I.
+    split_day_free: bool = False       # the day keeps one size instead of
+                                       # being set to the box width
+    split_time_big: bool = False       # right block sized by role (7:00
+                                       # large over a small PM) rather than
+                                       # by width
+    split_roles: bool = False          # every block takes the reference
+                                       # pair's two sizes outright
+    split_num_dx: float = 0.000 # the date nudged right, of chip w
+    split_box_scale: float = 1.000 # widen the box past what the base
+                                       # type size gives, up to the zone
+    split_box_fit: str = "chip" # how a line reaches the box width:
+                                       # "scale" sets every line at one
+                                       # size and fits it to the box, so
+                                       # all of them share a height and a
+                                       # width; others keep the type's own
+                                       # proportions and so cannot.
+    split_box_h: float = 0.185         # the box height, of chip height
+                                       # "chip" sizes it to the width,
+                                       # "month" holds one size and
+                                       # letterspaces the narrow ones out
+    split_square_w: float = 1.000      # the shared width, of what fits
+    split_square_scope: str = "both"   # one width for both blocks, or "side"
+    split_pad_num: bool = True # 02 rather than 2, so dates square
+    split_square_cap: float = 3.000    # most a slot may grow to reach width
+    split_size_played: str = "small|small"
+    split_left: float = 0.235 # left zone, of chip width
+    split_right: float = 0.235 # mirrors split_left, so the two
+                                       # zones and their margins match and
+                                       # the crest lands on the chip's centre
+    split_date_size: float = 0.215     # the stacked day and date, of chip height
+    split_date_gap: float = 0.255      # between those two lines, of chip height
+    split_time_size: float = 0.215     # the time or result, of chip height
+    # The mark is held inside the gap on both axes, with the same margin
+    # of chip left around every one -- sized on width alone, a tall mark
+    # runs past the chip's top and bottom and is cut by them.
+    split_crest_contain: bool = True
+    split_crest_margin: float = 0.130  # black kept around it, of chip height
+    split_crest_grow: float = 1.000 # crest scale through the middle
+    split_pad: float = 0.045           # breathing room at each end, of width
+    live_crest_grow: float = 1.300      # how big the crest goes when it is
+                                        # the only thing on the chip
+    live_cursive_font: str = "assets/fonts/AlexBrush.ttf"
+    live_cursive_word: str = "Live"
+    live_cursive_size: float = 1.050    # of chip height
+    live_cursive_alpha: float = 0.28    # how far back it sits
     played_dim: float = 0.52           # how far a dimmed chip fades, 0-1
     played_dim_text: bool = True       # the date and score fade with the rest;
                                        # off, only the chip and crest recede

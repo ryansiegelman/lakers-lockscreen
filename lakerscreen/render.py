@@ -44,6 +44,80 @@ class _Canvas:
     def text_width(self, text: str, font, tracking: float = 0.0) -> float:
         return assets.tracked_width(font, text, tracking * self.ss) / self.ss
 
+    def text_boxed(self, center, text, font, fill, box_w, box_h):
+        """Set a line to exactly box_w by box_h, centred on `center`.
+
+        Lines of different character counts cannot share a height and a width
+        at the type's own proportions, so each one is drawn and then fitted to
+        the box. Every line on the chip then has identical dimensions.
+        """
+        if not text:
+            return
+        s = self.ss
+        bw, bh = max(1, int(round(box_w * s))), max(1, int(round(box_h * s)))
+        pad = int(round(font.size * 0.6)) + 8
+        w0 = int(assets.tracked_width(font, text, 0)) + 2 * pad
+        h0 = int(font.size * 2.4) + 2 * pad
+        tmp = Image.new("RGBA", (max(w0, 8), max(h0, 8)), (0, 0, 0, 0))
+        assets.draw_tracked(ImageDraw.Draw(tmp), (pad, h0 / 2.0), text, font,
+                            fill, tracking_px=0.0, anchor="lc")
+        bb = tmp.getbbox()
+        if not bb:
+            return
+        tmp = tmp.crop(bb).resize((bw, bh), Image.LANCZOS)
+        self.layer.alpha_composite(
+            tmp, (int(round(center[0] * s - bw / 2.0)),
+                  int(round(center[1] * s - bh / 2.0))))
+
+    def ink_width(self, text: str, font, tracking: float = 0.0) -> float:
+        """The width of the marks themselves, not of the advance.
+
+        Side bearings differ per glyph, so FRI's ink is narrower than its
+        advance while 02's is not. Squaring on the advance leaves the type
+        looking unequal against a rule drawn to that advance.
+        """
+        if not text:
+            return 0.0
+        try:
+            x0, _, x1, _ = font.getbbox(text)
+        except Exception:
+            return self.text_width(text, font, tracking)
+        return (x1 - x0 + tracking * self.ss * (len(text) - 1)) / self.ss
+
+    def ink_vspan(self, text: str, font):
+        """Where a line's ink starts and ends vertically, about its anchor.
+
+        Drawn with a centre anchor, a line is centred on the font's line box,
+        not on its own marks -- so FRI and 27 sit different distances from a
+        rule placed on the geometric middle between them.
+        """
+        try:
+            _, y0, _, y1 = font.getbbox(text)
+        except Exception:
+            return 0.0, 0.0
+        # draw_tracked's "c" anchor already centres a line on its own ink,
+        # so the marks run half their height either side of the anchor.
+        half = (y1 - y0) / 2.0
+        return -half / self.ss, half / self.ss
+
+    def ink_offset(self, text: str, font, tracking: float = 0.0) -> float:
+        """How far the ink's middle sits from the middle of the advance.
+
+        Text is placed on its advance width, but the ink inside that advance
+        is not always centred in it -- a 1 carries wide side bearings, so a
+        date like 11 reads a couple of pixels left of the day above it.
+        """
+        if not text:
+            return 0.0
+        try:
+            x0, _, x1, _ = font.getbbox(text)
+        except Exception:
+            return 0.0
+        tr = tracking * self.ss
+        n = len(text) - 1
+        adv = assets.tracked_width(font, text, tr)
+        return ((x0 + x1 + tr * n) / 2.0 - adv / 2.0) / self.ss
+
     def rounded_rect(self, box, radius, fill=None, outline=None, width=1.0):
         s = self.ss
         self.draw.rounded_rectangle(
@@ -539,8 +613,341 @@ def _ink_on(col, pal):
     return pal.badge_text if _luma(col) > 110 else pal.text
 
 
+_CENTROID: dict = {}
+
+
+def _ink_centroid(im: Image.Image, key: str):
+    """Where a mark's ink actually balances, against its own middle.
+
+    Returned as fractions of the mark's width and height. Centring the
+    bounding box centres the artwork's extremes, not its weight -- a mark
+    whose mass sits to one side still reads off-centre on the chip.
+    """
+    if key in _CENTROID:
+        return _CENTROID[key]
+    a = im.convert("RGBA").getchannel("A")
+    w, h = a.size
+    step = max(1, min(w, h) // 220)
+    a = a.resize((max(1, w // step), max(1, h // step)), Image.BILINEAR)
+    px = a.load()
+    sw, sh = a.size
+    sx = sy = tot = 0.0
+    for y in range(sh):
+        for x in range(sw):
+            v = px[x, y]
+            if v > 8:
+                sx += x * v
+                sy += y * v
+                tot += v
+    out = (0.0, 0.0) if not tot else (sx / tot / sw - 0.5, sy / tot / sh - 0.5)
+    _CENTROID[key] = out
+    return out
+
+
+def _split_zones(lay, w: float):
+    """Each block's own space, inset from the chip's edge.
+
+    The zones used to run right out to the border, so a block centred in its
+    zone sat hard against the side of the chip.
+    """
+    ins = w * lay.split_inset
+    return (ins, w * lay.split_left), (w * (1.0 - lay.split_right), w - ins)
+
+
+def _split_tokens(g: Game, lay) -> dict:
+    """What each token in a split mode stands for, for one game."""
+    tip = (g.start_local.strftime("%-I%p") if lay.time_compact
+           and g.start_local.minute == 0
+           else g.start_local.strftime("%-I:%M%p")).upper()
+    done = g.completed and g.won is not None
+    return {
+        "DAY":    g.start_local.strftime("%a").upper(),
+        "DATE":   g.start_local.strftime("%-m/%-d"),
+        "MON":    g.start_local.strftime("%b").upper(),
+        "NUM":    (g.start_local.strftime("%d") if lay.split_pad_num
+                   else g.start_local.strftime("%-d")),
+        "MONDAY": g.start_local.strftime("%b %-d").upper(),
+        "DOTTED": g.start_local.strftime("%-m.%-d"),
+        "D1":     g.start_local.strftime("%a")[0].upper(),
+        "TIME":   tip,
+        "HOUR":   (g.start_local.strftime("%-I")
+                   if lay.time_compact and g.start_local.minute == 0
+                   else g.start_local.strftime("%-I:%M")),
+        "MERID":  g.start_local.strftime("%p").upper(),
+        "WL":     ("W" if g.won else "L") if done else "",
+        "SCORE":  (g.score_line or "") if done else "",
+        "US":     str(g.team_score) if done and g.team_score is not None else "",
+        "THEM":   str(g.opp_score) if done and g.opp_score is not None else "",
+    }
+
+
+def _split_lines(mode: str, tok: dict):
+    """A mode's lines, each keeping the index of the slot it came from."""
+    parts = [p for p in mode.split("|") if p != "~"]
+    return [(i, " ".join(tok.get(t, t) for t in p.split()).strip())
+            for i, p in enumerate(parts)]
+
+
+def _split_metrics(c: _Canvas, cfg: Config, col_w: float, chip_h: float,
+                   games, scale: float):
+    """One type size per slot for the whole month.
+
+    Each chip used to solve its own size, so a chip reading WED 3 grew the 3
+    a long way to match WED while a chip reading FRI 27 barely grew the 27:
+    the date came out a different size on every row. Solving across every
+    game fixes one size per slot, and the per-chip tracking still squares a
+    block's two lines to a single width.
+    """
+    lay = cfg.layout
+    if not lay.chip_split or not games:
+        return None
+    (llo, lhi), (rlo, rhi) = _split_zones(lay, col_w)
+    base = chip_h * lay.split_date_size * scale
+    inner_l = (lhi - llo) * (1.0 - 2.0 * lay.split_pad)
+    inner_r = (rhi - rlo) * (1.0 - 2.0 * lay.split_pad)
+    done = [g for g in games if g.completed and g.won is not None]
+    out = {}
+    sides = (("L",  lay.split_left_mode,    inner_l, games),
+             ("R",  lay.split_right_mode,   inner_r, games),
+             ("Rp", lay.split_right_played, inner_r, done or games))
+    if lay.split_square == "rows":
+        # One size per row, shared by both blocks, so the top line of the left
+        # block and the top line of the right are the same height and sit on
+        # the same level. Sizing each line to a common width instead makes the
+        # day a different size on every chip -- FRI is narrower than MON, so
+        # it has to be set larger to reach the same width -- and that is what
+        # leaves WED sitting lower than 7:00.
+        base = chip_h * lay.split_date_size * scale
+        parts = [t for t in lay.split_ref_left.split("|") if t]
+        sz0 = base
+        f0 = c.font(sz0)
+        while max(c.ink_width(t, f0, 0) for t in parts) > inner_l and sz0 > 4:
+            sz0 *= 0.96
+            f0 = c.font(sz0)
+        nat0 = [c.ink_width(t, f0, 0) for t in parts]
+        T = min(max(nat0) * lay.split_box_scale, inner_l, inner_r)
+        row_sz = [sz0 * min(T / n, lay.split_square_cap) if n > 0 else sz0
+                  for n in nat0]
+        for key, mode, inner, pool in sides:
+            n_slot = len([p for p in mode.split("|") if p != "~"])
+            szs = [row_sz[min(i, len(row_sz) - 1)] for i in range(n_slot)]
+            rows = [dict(_split_lines(mode, _split_tokens(g, lay)))
+                    for g in pool]
+            for i in range(n_slot):
+                sz = szs[i]
+                while sz > 4 and max([c.ink_width(r.get(i, ""), c.font(sz), 0)
+                                      for r in rows] or [0.0]) > inner:
+                    sz *= 0.96
+                szs[i] = sz
+            out[key] = {"sz": szs, "tar": 0.0, "base": base,
+                        "square": "rows", "block_w": T}
+        if lay.split_rows_track:
+            # Every line letterspaced out to the rule's width. The row is
+            # first shrunk until its widest string fits, so no line is ever
+            # tightened -- MON sets the size and FRI spreads to meet it.
+            for i in range(2):
+                sz = min([o["sz"][i] for o in out.values()
+                          if len(o["sz"]) > i] or [base])
+                def _w(sz):
+                    return max([c.ink_width(r.get(i, ""), c.font(sz), 0)
+                                for key, mode, inner, pool in sides
+                                for r in [dict(_split_lines(mode,
+                                          _split_tokens(g, lay)))
+                                          for g in pool]] or [0.0])
+                while sz > 4 and _w(sz) > T:
+                    sz *= 0.97
+                for o in out.values():
+                    if len(o["sz"]) > i:
+                        o["sz"][i] = sz
+            for o in out.values():
+                o["tar"] = T
+                o["square"] = "track"
+        return out
+    if lay.split_square == "box":
+        # The reference pair's block is the box every other block fills.
+        base = chip_h * lay.split_date_size * scale
+        parts = [t for t in lay.split_ref_left.split("|") if t]
+        sz0 = base
+        f0 = c.font(sz0)
+        while max(c.text_width(t, f0, 0) for t in parts) > inner_l and sz0 > 4:
+            sz0 *= 0.96
+            f0 = c.font(sz0)
+        nat0 = [(c.ink_width(t, f0, 0) if lay.split_box_fit == "chip"
+                 else c.text_width(t, f0, 0)) for t in parts]
+        T = min(max(nat0) * lay.split_box_scale, inner_l, inner_r)
+        ref_sz = [sz0 * min(T / n, lay.split_square_cap) if n > 0 else sz0
+                  for n in nat0]
+        if lay.split_box_fit == "even":
+            # One type size for every line: identical heights and identical
+            # stroke weight, with each line's own width left alone. Forcing
+            # the widths to match as well means scaling the type, which reads
+            # as stretched.
+            even = base * lay.split_box_scale
+            for key, mode, inner, pool in sides:
+                n_slot = len([p for p in mode.split("|") if p != "~"])
+                out[key] = {"sz": [even] * n_slot, "tar": 0.0, "base": base,
+                            "square": "even", "block_w": T}
+            return out
+        if lay.split_box_fit == "scale":
+            bh = chip_h * lay.split_box_h
+            for key, mode, inner, pool in sides:
+                n_slot = len([p for p in mode.split("|") if p != "~"])
+                out[key] = {"sz": [base] * n_slot, "tar": T, "base": base,
+                            "square": "scale", "block_w": T, "block_h": bh}
+            return out
+        fbase = c.font(base)
+        for key, mode, inner, pool in sides:
+            n_slot = len([p for p in mode.split("|") if p != "~"])
+            rows = [dict(_split_lines(mode, _split_tokens(g, lay)))
+                    for g in pool]
+            meas = (c.ink_width if lay.split_box_fit == "chip"
+                    else c.text_width)
+            nat = [max([meas(r[i], fbase, 0) for r in rows
+                        if r.get(i)] or [0.0]) for i in range(n_slot)]
+            szs = []
+            for i in range(n_slot):
+                if lay.split_roles and i < len(ref_sz):
+                    szs.append(ref_sz[i])          # the pair's sizes outright
+                elif (key == "L" and i == 0 and lay.split_day_free
+                      and ref_sz):
+                    szs.append(ref_sz[0])          # the day keeps one size
+                elif (key == "R" and lay.split_time_big and i < len(ref_sz)):
+                    szs.append(ref_sz[1 - i] if len(ref_sz) > 1 else ref_sz[0])
+                elif nat[i] > 0:
+                    szs.append(base * min(T / nat[i], lay.split_square_cap))
+                else:
+                    szs.append(base)
+            # Scores keep the box's width for their rule, but are not
+            # tracked out to it: a two-digit score would come out as 9 8.
+            fit = "chip" if (lay.split_box_fit == "chip"
+                             and key != "Rp") else "box"
+            out[key] = {"sz": szs, "tar": 0.0 if key == "Rp" else T,
+                        "base": base, "square": fit, "block_w": T}
+        return out
+    if lay.split_square == "block":
+        # One width per block: the large line fills it, the small line sits
+        # centred under it. Setting every line to the width instead forces
+        # the short ones to letterspace (2 7, 9 8), and makes PM larger than
+        # 7:00 because it has fewer characters to spend the width on.
+        base = chip_h * lay.split_date_size * scale
+        f0 = c.font(base)
+        want = {"L": lay.split_size_left, "R": lay.split_size_right,
+                "Rp": lay.split_size_played_sq}
+        T = min(inner_l, inner_r) * lay.split_square_w
+        for key, mode, inner, pool in sides:
+            n_slot = len([p for p in mode.split("|") if p != "~"])
+            rows = [dict(_split_lines(mode, _split_tokens(g, lay)))
+                    for g in pool]
+            nat = [max([c.text_width(r[i], f0, 0) for r in rows
+                        if r.get(i)] or [0.0]) for i in range(n_slot)]
+            names = [p.strip() for p in want[key].split("|")]
+            big = [i for i in range(n_slot)
+                   if i < len(names) and names[i] == "big" and nat[i] > 0]
+            big_nat = max([nat[i] for i in big] or [n for n in nat if n > 0]
+                          or [1.0])
+            big_sz = base * min(T / big_nat, lay.split_square_cap)
+            szs = []
+            for i in range(n_slot):
+                if i in big:
+                    szs.append(big_sz)
+                else:
+                    szs.append(base * min(1.0, T / nat[i]) if nat[i] > 0
+                               else base)
+            out[key] = {"sz": szs, "tar": 0.0, "base": base,
+                        "square": "block", "block_w": T}
+        return out
+    if lay.split_square in ("month", "chip"):
+        # One width for every line, so both blocks and both rules come out the
+        # same size. In "month" each slot keeps one size all month and the
+        # narrow lines track out to the width; in "chip" each line is sized to
+        # the width instead, which letterspaces nothing but lets the day
+        # change size between chips.
+        base = chip_h * lay.split_date_size * scale
+        f0 = c.font(base)
+        nat = {}
+        for key, mode, inner, pool in sides:
+            n_slot = len([p for p in mode.split("|") if p != "~"])
+            rows = [dict(_split_lines(mode, _split_tokens(g, lay)))
+                    for g in pool]
+            nat[key] = [max([c.text_width(r[i], f0, 0) for r in rows
+                             if r.get(i)] or [0.0]) for i in range(n_slot)]
+        wide = {"L": inner_l, "R": inner_r, "Rp": inner_r}
+        if lay.split_square_scope == "both":
+            t_of = {k: min(inner_l, inner_r) for k in wide}
+        else:
+            t_of = dict(wide)
+        for key, mode, inner, pool in sides:
+            T = t_of[key]
+            szs = []
+            for n0 in nat[key]:
+                k = (T / n0) if n0 > 0 else 1.0
+                szs.append(base * min(k, lay.split_square_cap))
+            out[key] = {"sz": szs, "tar": T, "base": base,
+                        "square": lay.split_square}
+        return out
+    pat = {"R": lay.split_size_right, "Rp": lay.split_size_played}
+    refs = {"L": lay.split_ref_left, "R": lay.split_ref_right, "Rp": ""}
+    for key, mode, inner, pool in sides:
+        ref = refs[key]
+        n_slot = len([p for p in mode.split("|") if p != "~"])
+        if ref:
+            # Sized off one named pair rather than the month's extremes.
+            # Solving from the maxima sized the date against the widest day
+            # of the month, so a two-digit date came out far larger than it
+            # does on the pair this was designed around.
+            rows = [{i: t for i, t in enumerate(ref.split("|")[:n_slot])}]
+        else:
+            rows = [dict(_split_lines(mode, _split_tokens(g, lay)))
+                    for g in pool]
+        def _widest(fnt, slot=None):
+            ws = [c.text_width(r[i], fnt, 0) for r in rows
+                  for i in range(n_slot)
+                  if (slot is None or i == slot) and r.get(i)]
+            return max(ws) if ws else 0.0
+        def _fit(slot):
+            sz = base
+            f = c.font(sz)
+            while _widest(f, slot) > inner and sz > 4:
+                sz *= 0.96
+                f = c.font(sz)
+            return sz, f
+        want = pat.get(key, "")
+        if want and "L" in out and out["L"]["sz"]:
+            # Sized off the left block's own pair, so both sides of the chip
+            # carry the same two sizes. Each line is then shrunk if its own
+            # content will not fit the zone at that size.
+            lo, hi = min(out["L"]["sz"]), max(out["L"]["sz"])
+            names = [p.strip() for p in want.split("|")][:n_slot]
+            szs = []
+            for i in range(n_slot):
+                s0 = hi if (i < len(names) and names[i] == "big") else lo
+                while s0 > 4 and _widest(c.font(s0), i) > inner:
+                    s0 *= 0.96
+                szs.append(s0)
+            out[key] = {"sz": szs, "tar": 0.0}
+            continue
+        if not ref:
+            # No reference pair: each line is simply fitted on its own. Growing
+            # one line to match the other's width is what turned a W into a
+            # 78px letter over a 32px score.
+            out[key] = {"sz": [_fit(i)[0] for i in range(n_slot)], "tar": 0.0}
+            continue
+        sz, f = _fit(None)
+        nat = [_widest(f, i) for i in range(n_slot)]
+        filled = [n for n in nat if n > 0]
+        tar = max(filled) if (lay.split_date_match and len(filled) > 1) else 0.0
+        szs = []
+        for n0 in nat:
+            grow = (min(tar / n0, lay.split_date_grow)
+                    if n0 > 0 and tar > n0 else 1.0)
+            szs.append(sz * grow)
+        out[key] = {"sz": szs, "tar": tar}
+    return out
+
+
 def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
-                    line_target: float = 0.0, is_today: bool = False) -> None:
+                    line_target: float = 0.0, is_today: bool = False,
+                    split_m: dict | None = None) -> None:
     """Stacked card, drawn to the proportions measured off the reference."""
     lay, pal = cfg.layout, cfg.palette
     x0, y0, x1, y1 = box
@@ -551,6 +958,12 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     accent = pal.gold if g.is_home else pal.purple
 
     played = g.completed and g.won is not None
+    # A game underway can drop its text entirely and put the crest in the
+    # middle of the chip, so the one in progress reads differently from the
+    # fixtures around it without a word being needed.
+    crest_only = g.state == "in" and lay.live_style.startswith("crest")
+    split = lay.chip_split
+    centre_crest = crest_only or split
     style = lay.played_style if played else "none"
     # Home or away stops mattering once the game is over: the cling comes off
     # and the result's own colour carries the chip instead.
@@ -740,6 +1153,27 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     if corner and not late_corner:
         _corner()
 
+    if crest_only and lay.live_style == "crest_cursive":
+        # The word laid right across the chip in a script face, behind the
+        # mark, so a game in progress is signalled by the chip itself rather
+        # than by a line of type where the time would be.
+        ss = c.ss
+        lf = assets.font_file(lay.live_cursive_font,
+                              int(round(h * lay.live_cursive_size * ss)))
+        if lf is not None:
+            band = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
+            ImageDraw.Draw(band).text(
+                ((x0 + w / 2.0) * ss, ((y0 + y1) / 2.0) * ss),
+                lay.live_cursive_word, font=lf, anchor="mm",
+                fill=tuple(pal.chip_border[:3])
+                     + (int(round(255 * lay.live_cursive_alpha)),))
+            keep = Image.new("L", c.layer.size, 0)
+            ImageDraw.Draw(keep).rounded_rectangle(
+                [(x0 + bw) * ss, (y0 + bw) * ss, (x1 - bw) * ss, (y1 - bw) * ss],
+                radius=int(round(max(0.0, rad - bw) * ss)), fill=255)
+            band.putalpha(ImageChops.multiply(band.getchannel("A"), keep))
+            c.layer.alpha_composite(band)
+
     # The disc, unless the crest is standing on its own.
     bare = lay.logo_bare
     d = h * (lay.logo_bare_size if bare else lay.logo_disc)
@@ -799,8 +1233,24 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 # follows from the mark's own proportions, capped so a tall one
                 # is not cut off.
                 room = w * tune.get("mark_zone", tune.get("zone", lay.logo_bare_zone))
+                if split:
+                    # Measure against the middle, not the crest's usual zone,
+                    # so a scale of 1.0 fills the gap between the type exactly
+                    # and nothing is sliced down the side.
+                    room = (w * (1.0 - lay.split_left - lay.split_right)
+                            - 2.0 * h * lay.split_crest_margin)
                 by_w = room * crest.height / crest.width
-                if lay.logo_bare_flush:
+                if crest_only:
+                    size = by_w * lay.live_crest_grow
+                elif split and lay.split_crest_contain:
+                    # Held inside the gap on both axes. by_w is the height the
+                    # mark would take if it filled the gap's width, so a tall
+                    # mark needs the chip's own height as the other limit.
+                    room_h = h * (1.0 - 2.0 * lay.split_crest_margin)
+                    size = min(by_w, room_h) * lay.split_crest_grow
+                elif split:
+                    size = by_w * lay.split_crest_grow
+                elif lay.logo_bare_flush:
                     # Exactly the zone's width, whatever that costs in height,
                     # times whatever this mark was tuned to. No cap: a cap
                     # leaves a mark short of the zone line.
@@ -822,6 +1272,15 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 # left, where the chip's own edge takes it. Nothing is ever
                 # cut off the right, and every mark ends at the same x.
                 mx = (x0 + w * zone_f) * ss - cw_ + h * tune.get("dx", 0.0) * ss
+            if split:
+                # Centre on the gap between the type, not on the chip: the two
+                # zones are different widths, so the chip's middle sits right
+                # of the gap's middle and the mark would clip the time.
+                mid = x0 + w * lay.split_left + w * (
+                    1.0 - lay.split_left - lay.split_right) / 2.0
+                mx = mid * ss - cw_ / 2.0
+            elif centre_crest:
+                mx = (x0 + w / 2.0) * ss - cw_ / 2.0
             elif lay.logo_bare_flush:
                 # Smaller than the zone: nothing to crop, so centre it in the
                 # zone rather than leaving it hard against one side.
@@ -829,9 +1288,28 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                       - cw_ / 2.0)
             else:
                 mx = (dcx + h * (lean + tune.get("dx", 0.0))) * ss - cw_ / 2.0
+            # The per-team dy was measured against the old layout, where the
+            # mark bled past the chip and the nudge decided which part of it
+            # showed. Contained in the gap there is nothing to crop, and the
+            # nudge only pushes the mark off centre and back into the chip's
+            # edge.
+            my_off = 0.0 if (split and lay.split_crest_contain) \
+                else h * tune.get("dy", 0.0)
+            opt = tune.get("optical")
+            if split and opt:
+                # Balanced on the mark's own weight rather than its bounding
+                # box, for the few whose ink sits to one side. "x" balances
+                # across only, leaving the mark where its box put it
+                # vertically.
+                ox, oy = _ink_centroid(crest, g.opponent.upper())
+                mx -= ox * cw_
+                if opt != "x":
+                    my_off -= oy * ch_ / float(ss)
+            if split:
+                my_off += h * tune.get("sdy", 0.0)
             tmp.alpha_composite(
                 m, (int(round(mx)),
-                    int(round((dcy + h * tune.get("dy", 0.0)) * ss - ch_ / 2.0))))
+                    int(round((dcy + my_off) * ss - ch_ / 2.0))))
             mask = Image.new("L", c.layer.size, 0)
             inset = bw * 0.5
             md = ImageDraw.Draw(mask)
@@ -840,8 +1318,18 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 radius=int(round(max(0.0, rad - inset) * ss)), fill=255)
             if lay.logo_bare_fill_height and not lay.logo_bare_ring:
                 # Crop the width to the crest's own zone, the way the chip's
-                # top and bottom crop its height.
-                if swap:
+                # top and bottom crop its height. A crest that has the chip to
+                # itself keeps the full width instead.
+                if split:
+                    # Fence it into the middle, so the day, date and time
+                    # either side are never run over.
+                    md.rectangle([0, 0, (x0 + w * lay.split_left) * ss,
+                                  c.layer.size[1]], fill=0)
+                    md.rectangle([(x1 - w * lay.split_right) * ss, 0,
+                                  c.layer.size[0], c.layer.size[1]], fill=0)
+                elif crest_only:
+                    pass
+                elif swap:
                     md.rectangle([0, 0, (x1 - w * zone_f) * ss, c.layer.size[1]], fill=0)
                 else:
                     md.rectangle([(x0 + w * tune.get("mark_zone", zone_f)) * ss, 0,
@@ -935,12 +1423,42 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         # the same width as every other date line, so the grid stays flush.
         top_txt = "TODAY"
     result_mark = result_score = None
+    live_col = None
     if g.completed and g.won is not None:
         result_mark = "W" if g.won else "L"
         result_score = g.score_line
         bot_txt = "%s %s" % (result_mark, result_score)
     elif g.state == "in":
-        bot_txt = "LIVE"
+        # What a game in progress says. "live" is the word; "score" shows the
+        # running score the way a final does; "time" leaves the tip-off time
+        # up, so a game underway looks like any other fixture.
+        tip = (g.start_local.strftime("%-I%p") if lay.time_compact
+               and g.start_local.minute == 0
+               else g.start_local.strftime("%-I:%M%p")).upper()
+        # Only things that stay true for the whole game. The running score is
+        # deliberately not offered: the board re-renders a few times a day and
+        # the phone collects it less often still, so a score would sit frozen
+        # on the chip long after it stopped being right - including after the
+        # final. A word, or the tip-off time, is never wrong.
+        mode = lay.live_style
+        WORDS = {"live": "LIVE", "now": "NOW", "inplay": "IN PLAY",
+                 "playing": "PLAYING", "onnow": "ON NOW", "live_gold": "LIVE"}
+        if mode == "time":
+            bot_txt = tip
+        elif mode == "time_dot":
+            result_mark = "\u2022"
+            result_score = tip
+            bot_txt = "%s %s" % (result_mark, result_score)
+        elif mode == "dot":
+            bot_txt = "\u2022"
+        elif mode == "live_dot":
+            result_mark = "\u2022"
+            result_score = "LIVE"
+            bot_txt = "%s %s" % (result_mark, result_score)
+        else:
+            bot_txt = WORDS.get(mode, "LIVE")
+        if mode == "live_gold":
+            live_col = pal.gold
     else:
         bot_txt = (g.start_local.strftime("%-I%p") if lay.time_compact
                    and g.start_local.minute == 0
@@ -998,11 +1516,14 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         return f, ((target - wide) / n if n > 0 else 0.0)
 
     f_top, tr_top = _fit(top_txt, w_top)
-    c.text((tcx, y0 + h * lay.logo_line1), top_txt, f_top, txt_col,
-           tracking=tr_top, anchor="mc")
+    if not (crest_only or split):
+        c.text((tcx, y0 + h * lay.logo_line1), top_txt, f_top, txt_col,
+               tracking=tr_top, anchor="mc")
 
     yb = y0 + h * lay.logo_line2
-    if result_mark:
+    if crest_only or split:
+        pass
+    elif result_mark:
         # The slack goes into the score's letters and into the gap before it,
         # so the W/L keeps its shape and the pair still starts and ends flush.
         sw = c.text_width(result_score, font, 0)
@@ -1060,16 +1581,195 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     else:
         f_bot, tr_bot = _fit(bot_txt, w_bot)
         c.text((tcx, yb), bot_txt, f_bot,
-               pal.gold if ts == "goldtime" else txt_col,
+               live_col or (pal.gold if ts == "goldtime" else txt_col),
                tracking=tr_bot, anchor="mc")
 
-    if lay.crest_label and bare and drawn:
+    if split:
+        cy = (y0 + y1) / 2.0
+        TOK = _split_tokens(g, lay)
+        (llo, lhi), (rlo, rhi) = _split_zones(lay, w)
+
+        def _block(mode, key, cx, room, base_size, rule_col=None):
+            """Draw a stacked block, centred on cx, fitted to room.
+
+            Both sides of the chip come through here, so they share their type
+            size, their line gap and the way the two lines are set to one
+            width. Matching them by eye would drift the moment either side's
+            content changed. The sizes come from the month-wide solve when
+            there is one, so the same slot is the same size on every chip.
+            """
+            lines = [(i, t) for i, t in _split_lines(mode, TOK) if t]
+            if not lines:
+                return
+            rule = "~" in mode.split("|")
+            m = (split_m or {}).get(key)
+            if m and m.get("square") == "track" and lay.split_track_max > 0:
+                # Letterspacing first, up to the cap, then sizing for whatever
+                # it cannot cover. Tracking alone would have to put 9.6px
+                # between FRI's letters; sizing alone changes its height and
+                # drops it off the level of the line beside it.
+                tar = m["tar"]
+                szs = {}
+                for i, t in lines:
+                    sz = m["sz"][i]
+                    w0 = c.ink_width(t, c.font(sz), 0)
+                    n = len(t) - 1
+                    if w0 <= 0:
+                        szs[i] = sz
+                        continue
+                    if w0 > tar or n <= 0:
+                        sz *= tar / w0
+                    else:
+                        cap = lay.split_track_max * sz
+                        if (tar - w0) / n > cap:
+                            sz *= (tar - cap * n) / w0
+                    szs[i] = sz
+            elif m and m.get("square") == "chip":
+                # Each line sized so its ink is the shared width, so none of
+                # them has to letterspace to get there. Solved rather than
+                # scaled in one step, because ink does not grow exactly with
+                # the font's integer size.
+                b0 = m["base"]
+                szs = {}
+                for i, t in lines:
+                    sz = b0
+                    for _ in range(6):
+                        w0 = c.ink_width(t, c.font(sz), 0)
+                        if w0 <= 0:
+                            break
+                        nxt = sz * (m["tar"] / w0)
+                        sz = min(max(nxt, b0 * 0.2), b0 * lay.split_square_cap)
+                    szs[i] = sz
+                tar = m["tar"]
+            elif m:
+                szs = {i: m["sz"][i] for i, _ in lines if i < len(m["sz"])}
+                tar = m["tar"]
+            else:
+                # Standalone: solve off this chip alone.
+                sz = base_size
+                f = c.font(sz)
+                inner = room * (1.0 - 2.0 * lay.split_pad)
+                while max(c.text_width(t, f, 0) for _, t in lines) > inner \
+                        and sz > 4:
+                    sz *= 0.96
+                    f = c.font(sz)
+                nat = [c.text_width(t, f, 0) for _, t in lines]
+                tar = max(nat) if (lay.split_date_match
+                                   and len(lines) > 1) else 0.0
+                szs = {}
+                for (i, _), n0 in zip(lines, nat):
+                    grow = (min(tar / n0, lay.split_date_grow)
+                            if n0 > 0 and tar > n0 else 1.0)
+                    szs[i] = sz * grow
+            gap = h * lay.split_date_gap
+            slot_tok = [p.strip() for p in mode.split("|") if p != "~"]
+            # Fonts and tracking first: where the lines sit depends on where
+            # their marks fall, which is not known until they are set.
+            set_up = []
+            for i, t in lines:
+                ff = c.font(szs.get(i, base_size))
+                wide = c.text_width(t, ff, 0)
+                n = len(t) - 1
+                if n > 0 and tar > 0 and (m or {}).get("square") in (
+                        "chip", "track"):
+                    tr2 = (tar - c.ink_width(t, ff, 0)) / n
+                else:
+                    tr2 = (tar - wide) / n if (tar > wide and n > 0) else 0.0
+                ink = txt_col
+                if (lay.split_wl_ink and i < len(slot_tok)
+                        and slot_tok[i] == "WL" and g.won is not None):
+                    ink = pal.gold if g.won else pal.loss_ink
+                set_up.append((i, t, ff, tr2, ink,
+                               c.ink_vspan(t, ff), wide + tr2 * n))
+            rh = h * lay.split_rule_h
+            ry = cy + h * lay.split_rule_dy
+            boxed = (m or {}).get("square") == "scale"
+            if boxed and len(lines) > 1:
+                # Every line is the same box, so the two sit the same distance
+                # off the rule and the block is symmetric about it.
+                clr = h * lay.split_rule_clear
+                half = m["block_h"] / 2.0
+                ys = [ry - rh / 2.0 - clr - half,
+                      ry + rh / 2.0 + clr + half]
+            elif len(lines) == 1:
+                ys = [cy]
+            elif rule_col is not None and lay.split_rule_pos == "between":
+                # Each line is placed off the rule by the same clearance, so
+                # the four gaps -- above and below both rules -- all match.
+                clr = h * lay.split_rule_clear
+                ys = [ry - rh / 2.0 - clr - set_up[0][5][1],
+                      ry + rh / 2.0 + clr - set_up[1][5][0]]
+            else:
+                ys = [cy - gap / 2.0, cy + gap / 2.0]
+            if (lay.split_block_centre and len(set_up) > 1
+                    and rule_col is not None
+                    and lay.split_rule_pos == "between"):
+                # The block's own marks, centred on the chip. Hung off the
+                # rule alone, a block whose lower line is twice the height of
+                # its upper one sits visibly low.
+                top = ys[0] + set_up[0][5][0]
+                bot = ys[1] + set_up[1][5][1]
+                shift = (cy - (top + bot) / 2.0) * lay.split_block_centre
+                # The rule travels with the lines, so the block keeps its own
+                # spacing and simply sits where its marks balance.
+                ys = [y + shift for y in ys]
+                ry += shift
+            drawn = []
+            for (i, t, ff, tr2, ink, vs, wd), yy in zip(set_up, ys):
+                drawn.append(wd if not boxed else (m or {})["block_w"])
+                if boxed:
+                    c.text_boxed((cx, yy), t, ff, ink,
+                                 m["block_w"], m["block_h"])
+                    continue
+                dx = w * lay.split_num_dx if (key == "L" and i == 1) else 0.0
+                dx -= c.ink_offset(t, ff, tr2)
+                c.text((cx + dx, yy), t, ff, ink, tracking=tr2, anchor="mc")
+            if rule and len(lines) > 1:
+                c.rect((cx - max(drawn) / 2.0, cy - h * 0.012,
+                        cx + max(drawn) / 2.0, cy + h * 0.012), txt_col)
+            if rule_col is not None and drawn:
+                # Measured off the type that was just set, so the rule is the
+                # width of the text rather than a fraction of the zone.
+                bw2 = (m or {}).get("block_w") or max(drawn)
+                rw = (bw2 if lay.split_rule_fit else room) * lay.split_rule_w
+                if not (lay.split_rule_pos == "between" and len(lines) > 1):
+                    ry = ys[-1] + h * lay.split_rule_gap
+                # Snapped to whole pixels, and its corners too. A 47.5px rule
+                # lands half-lit on its boundary pixel, so the same rule
+                # rasterised bright white and dim purple measured 49px and
+                # 47px. Whole pixels give every rule identical edges.
+                rw = max(1.0, float(round(rw)))
+                rh2 = max(1.0, float(round(rh)))
+                rx0 = float(round(cx - rw / 2.0))
+                ry0 = float(round(ry - rh2 / 2.0))
+                c.rounded_rect((rx0, ry0, rx0 + rw, ry0 + rh2),
+                               rh2 / 2.0, fill=rule_col)
+
+        bsz = h * lay.split_date_size * scale
+        played = bool(result_mark) and g.completed and g.won is not None
+        _block(lay.split_left_mode, "L", x0 + (llo + lhi) / 2.0, lhi - llo,
+               bsz, txt_col if lay.split_rule_left else None)
+        rmode = lay.split_right_played if played else lay.split_right_mode
+        rcol = accent
+        if played and lay.split_rule_result:
+            rcol = pal.gold if g.won else pal.loss_ink
+        _block(rmode, "Rp" if played else "R", x0 + (rlo + rhi) / 2.0,
+               rhi - rlo, bsz, rcol if lay.split_rule else None)
+
+    if lay.crest_label and bare and drawn and not (split and lay.split_rule):
         # Centred on the chip, not on the artwork: vertically on the chip's
         # own middle, horizontally on the space left of the schedule text.
         # Placing it on the crest put it somewhere different on every mark,
         # because each one is cropped differently by the chip and the zone.
         ly = (y0 + y1) / 2.0 + h * lay.crest_label_dy
-        lx = (x0 + (tcx - target / 2.0)) / 2.0 + h * lay.crest_label_dx
+        if split:
+            lx = x0 + w * lay.split_left + w * (
+                1.0 - lay.split_left - lay.split_right) / 2.0
+        elif crest_only:
+            lx = x0 + w / 2.0
+        else:
+            lx = (x0 + (tcx - target / 2.0)) / 2.0
+        lx += h * lay.crest_label_dx
         # Today can be marked here instead of on the chip's body: the plate is
         # the one small shape on the chip that is already an object in its own
         # right, so colouring it reads as a state rather than a redesign.
@@ -1438,6 +2138,8 @@ def build(cfg: Config, ttl: Optional[int] = None
                  else _type_scale(c, cfg, col_w, chip_h, shown, tag_w))
         logo_target = (_logo_line_target(c, cfg, chip_h, shown, scale)
                        if cfg.chip_style == "logo" else 0.0)
+        split_m = (_split_metrics(c, cfg, col_w, chip_h, shown, scale)
+                   if cfg.chip_style == "logo" else None)
         line_target = _line_target(c, cfg, col_w, chip_h, shown, scale, tag_w, games)
         for i, g in enumerate(shown):
             col, row = divmod(i, rows)            # column-major: the whole left
@@ -1446,7 +2148,8 @@ def build(cfg: Config, ttl: Optional[int] = None
             y0 = start_y + row * pitch + (pitch - chip_h) / 2.0
             if cfg.chip_style == "logo":
                 _draw_chip_logo(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale,
-                                logo_target, g.start_local.date() == today)
+                                logo_target, g.start_local.date() == today,
+                                split_m)
             else:
                 _draw_chip(c, (x0, y0, x0 + col_w, y0 + chip_h), g, cfg, scale,
                            tag_w, line_target, tag_h_px, tag_letter_px)

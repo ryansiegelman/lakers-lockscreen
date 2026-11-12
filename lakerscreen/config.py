@@ -157,18 +157,21 @@ class Layout:
     # The older grow/dx/dy/optical keys belong to the contained layout and are
     # ignored here.
     crest_tune: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
+        "BOS": {"sz": 0.850},
+        "WAS": {"sz": 0.850, "sy": 0.050},
+        "MIL": {"sy": -0.050},
         "CHA": {"sx": -0.060},
         "CHI": {"sy": -0.060},
         "CLE": {"sy": 0.060},
         "DAL": {"sz": 0.850},
-        "DET": {"sz": 0.750, "sy": 0.150},
+        "DET": {"sz": 0.900, "sy": 0.150, "sx": -0.100},
         "HOU": {"sz": 0.950, "sy": 0.430},
         "IND": {"sz": 0.780, "sy": 0.115},
         "MIA": {"sy": 0.060},
         "OKC": {"sz": 1.200},
-        "ORL": {"sx": -0.060},
-        "PHI": {"sz": 0.850},
-        "PHO": {"sx": -0.060},
+        "ORL": {"sx": -0.060, "sy": -0.050},
+        "PHI": {"sz": 0.850, "sy": -0.050},
+        "PHO": {"sx": -0.060, "sy": 0.050},
         "TOR": {"sy": 0.010},
     })
     # Marks that are already a ring. The chip's own keyline is still drawn, and

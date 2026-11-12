@@ -674,6 +674,16 @@ def _split_tokens(g: Game, lay) -> dict:
                    if lay.time_compact and g.start_local.minute == 0
                    else g.start_local.strftime("%-I:%M")),
         "MERID":  g.start_local.strftime("%p").upper(),
+        "MIN":    g.start_local.strftime("%M"),
+        "HR":     g.start_local.strftime("%-I"),
+        "COLONM": ":" + g.start_local.strftime("%M"),
+        "VSAT":   "VS" if g.is_home else "AT",
+        "HA":     "H" if g.is_home else "A",
+        # PST and PDT both read as PT: the daylight letter is noise here.
+        "TZ":     ((g.start_local.strftime("%Z") or "PT").upper()[:1] + "T")
+                  if len(g.start_local.strftime("%Z") or "") >= 2 else "PT",
+        "OPP":    lay.crest_label_code.get(g.opponent.upper(),
+                                           g.opponent.upper()),
         "WL":     ("W" if g.won else "L") if done else "",
         "SCORE":  (g.score_line or "") if done else "",
         "US":     str(g.team_score) if done and g.team_score is not None else "",
@@ -822,7 +832,8 @@ def _split_metrics(c: _Canvas, cfg: Config, col_w: float, chip_h: float,
             fit = "chip" if (lay.split_box_fit == "chip"
                              and key != "Rp") else "box"
             out[key] = {"sz": szs, "tar": 0.0 if key == "Rp" else T,
-                        "base": base, "square": fit, "block_w": T}
+                        "base": base, "square": fit, "block_w": T,
+                        "ref": [t for t in lay.split_ref_left.split("|") if t]}
         return out
     if lay.split_square == "block":
         # One width per block: the large line fills it, the small line sits
@@ -1249,7 +1260,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                     room_h = h * (1.0 - 2.0 * lay.split_crest_margin)
                     size = min(by_w, room_h) * lay.split_crest_grow
                 elif split:
-                    size = by_w * lay.split_crest_grow
+                    size = by_w * lay.split_crest_grow * tune.get("sz", 1.0)
                 elif lay.logo_bare_flush:
                     # Exactly the zone's width, whatever that costs in height,
                     # times whatever this mark was tuned to. No cap: a cap
@@ -1278,7 +1289,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 # of the gap's middle and the mark would clip the time.
                 mid = x0 + w * lay.split_left + w * (
                     1.0 - lay.split_left - lay.split_right) / 2.0
-                mx = mid * ss - cw_ / 2.0
+                mx = (mid + h * tune.get("sx", 0.0)) * ss - cw_ / 2.0
             elif centre_crest:
                 mx = (x0 + w / 2.0) * ss - cw_ / 2.0
             elif lay.logo_bare_flush:
@@ -1295,23 +1306,24 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             # edge.
             my_off = 0.0 if (split and lay.split_crest_contain) \
                 else h * tune.get("dy", 0.0)
+            if split:
+                # The legacy dx/dy/optical were measured for the contained
+                # layout; here the mark is cropped by the window instead, so
+                # it carries its own nudge and zoom.
+                my_off = h * tune.get("sy", 0.0)
             opt = tune.get("optical")
             if split and opt:
-                # Balanced on the mark's own weight rather than its bounding
-                # box, for the few whose ink sits to one side. "x" balances
-                # across only, leaving the mark where its box put it
-                # vertically.
                 ox, oy = _ink_centroid(crest, g.opponent.upper())
                 mx -= ox * cw_
                 if opt != "x":
                     my_off -= oy * ch_ / float(ss)
-            if split:
-                my_off += h * tune.get("sdy", 0.0)
             tmp.alpha_composite(
                 m, (int(round(mx)),
                     int(round((dcy + my_off) * ss - ch_ / 2.0))))
             mask = Image.new("L", c.layer.size, 0)
-            inset = bw * 0.5
+            # Held off the chip's own keyline, so the mark never runs into the
+            # white border it is cut by.
+            inset = bw * 0.5 + (h * lay.split_crest_pad if split else 0.0)
             md = ImageDraw.Draw(mask)
             md.rounded_rectangle(
                 [(x0 + inset) * ss, (y0 + inset) * ss, (x1 - inset) * ss, (y1 - inset) * ss],
@@ -1322,11 +1334,45 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 # itself keeps the full width instead.
                 if split:
                     # Fence it into the middle, so the day, date and time
-                    # either side are never run over.
-                    md.rectangle([0, 0, (x0 + w * lay.split_left) * ss,
-                                  c.layer.size[1]], fill=0)
-                    md.rectangle([(x1 - w * lay.split_right) * ss, 0,
-                                  c.layer.size[0], c.layer.size[1]], fill=0)
+                    # either side are never run over. Cutting with two plain
+                    # rectangles leaves the mark with square sides; a rounded
+                    # window gives it ends that answer the chip's own.
+                    buf = w * lay.split_crest_buffer
+                    lf = (x0 + w * lay.split_left + buf) * ss
+                    rt = (x1 - w * lay.split_right - buf) * ss
+                    if lay.split_crest_arc > 0:
+                        # Each side is a single arc running the chip's whole
+                        # height, so the mark is held between two brackets
+                        # rather than inside a rounded box.
+                        import math as _m
+                        top, bot = (y0 + inset) * ss, (y1 - inset) * ss
+                        mcy = (top + bot) / 2.0
+                        half = (bot - top) / 2.0
+                        rr = max(half, h * lay.split_crest_arc * ss)
+                        pts_l, pts_r = [], []
+                        for n in range(41):
+                            yy = top + (bot - top) * n / 40.0
+                            dx = rr - _m.sqrt(max(0.0, rr * rr
+                                                  - (yy - mcy) ** 2))
+                            pts_l.append((lf + dx, yy))
+                            pts_r.append((rt - dx, yy))
+                        win = Image.new("L", c.layer.size, 0)
+                        ImageDraw.Draw(win).polygon(
+                            pts_l + list(reversed(pts_r)), fill=255)
+                        mask = ImageChops.multiply(mask, win)
+                        md = ImageDraw.Draw(mask)
+                    elif lay.split_crest_round > 0:
+                        win = Image.new("L", c.layer.size, 0)
+                        ImageDraw.Draw(win).rounded_rectangle(
+                            [lf, (y0 + inset) * ss, rt, (y1 - inset) * ss],
+                            radius=int(round(h * lay.split_crest_round * ss)),
+                            fill=255)
+                        mask = ImageChops.multiply(mask, win)
+                        md = ImageDraw.Draw(mask)
+                    else:
+                        md.rectangle([0, 0, lf, c.layer.size[1]], fill=0)
+                        md.rectangle([rt, 0, c.layer.size[0],
+                                      c.layer.size[1]], fill=0)
                 elif crest_only:
                     pass
                 elif swap:
@@ -1603,7 +1649,28 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 return
             rule = "~" in mode.split("|")
             m = (split_m or {}).get(key)
-            if m and m.get("square") == "track" and lay.split_track_max > 0:
+            if (lay.split_mirror_sizes and key != "L"
+                    and (split_m or {}).get("L", {}).get("square") == "chip"):
+                # Sized off the left block, line for line, so both sides carry
+                # the same two sizes on any given chip.
+                ml = split_m["L"]
+                b0 = ml["base"]
+                inner = room * (1.0 - 2.0 * lay.split_pad)
+                szs = {}
+                for n, (i, t) in enumerate(lines):
+                    sz = b0
+                    for _ in range(6):
+                        w0 = c.ink_width(ml.get("ref", ["FRI", "27"])[
+                            min(n, 1)], c.font(sz), 0)
+                        if w0 <= 0:
+                            break
+                        sz = min(max(sz * (ml["tar"] / w0), b0 * 0.2),
+                                 b0 * lay.split_square_cap)
+                    while sz > 4 and c.ink_width(t, c.font(sz), 0) > inner:
+                        sz *= 0.97
+                    szs[i] = sz
+                tar = 0.0
+            elif m and m.get("square") == "track" and lay.split_track_max > 0:
                 # Letterspacing first, up to the cap, then sizing for whatever
                 # it cannot cover. Tracking alone would have to put 9.6px
                 # between FRI's letters; sizing alone changes its height and
@@ -1730,7 +1797,8 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             if rule_col is not None and drawn:
                 # Measured off the type that was just set, so the rule is the
                 # width of the text rather than a fraction of the zone.
-                bw2 = (m or {}).get("block_w") or max(drawn)
+                bw2 = (max(drawn) if lay.split_mirror_sizes
+                       else ((m or {}).get("block_w") or max(drawn)))
                 rw = (bw2 if lay.split_rule_fit else room) * lay.split_rule_w
                 if not (lay.split_rule_pos == "between" and len(lines) > 1):
                     ry = ys[-1] + h * lay.split_rule_gap
@@ -1756,7 +1824,8 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         _block(rmode, "Rp" if played else "R", x0 + (rlo + rhi) / 2.0,
                rhi - rlo, bsz, rcol if lay.split_rule else None)
 
-    if lay.crest_label and bare and drawn and not (split and lay.split_rule):
+    if lay.crest_label and bare and drawn and (
+            lay.split_label or not (split and lay.split_rule)):
         # Centred on the chip, not on the artwork: vertically on the chip's
         # own middle, horizontally on the space left of the schedule text.
         # Placing it on the crest put it somewhere different on every mark,

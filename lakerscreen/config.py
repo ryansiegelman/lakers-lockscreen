@@ -152,36 +152,24 @@ class Layout:
     # Every mark picked team by team: how far past the zone it is
     # scaled, and any nudge. The right edge stays pinned to the zone
     # line either way, so none is ever cut off on that side.
+    # Per-team adjustment inside the split chip's window. "sx"/"sy" nudge the
+    # mark across and down as fractions of the chip's height; "sz" zooms it.
+    # The older grow/dx/dy/optical keys belong to the contained layout and are
+    # ignored here.
     crest_tune: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
-        "ATL": {"grow": 0.911},
-        "BKN": {"grow": 1.011},
-        "BOS": {"grow": 0.883, "dy": 0.0578, "dx": 0.0733},
-        "CHA": {"grow": 1.150, "dy": -0.1800},
-        "CHI": {"grow": 1.150},
-        "CLE": {"grow": 1.000},
-        "DAL": {"grow": 1.000},
-        "DEN": {"grow": 1.150},
-        "DET": {"grow": 1.150, "dy": 0.2000, "optical": True},
-        "GSW": {"grow": 0.994},
-        "HOU": {"grow": 0.806, "dy": 0.2000, "optical": True, "sdy": 0.030},
-        "IND": {"grow": 0.800},
-        "LAC": {"grow": 1.076, "dy": -0.0600, "dx": 0.0489},
-        "MEM": {"grow": 1.150},
-        "MIA": {"grow": 1.000},
-        "MIL": {"grow": 1.000, "dy": -0.1230, "dx": 0.0800},
-        "MIN": {"grow": 1.150, "dy": -0.0900},
-        "NOL": {"grow": 1.150, "dy": 0.0900},
-        "NYK": {"grow": 1.150, "dy": 0.0700},
-        "OKC": {"grow": 1.600},
-        "ORL": {"grow": 1.150},
-        "PHI": {"grow": 0.911},
-        "PHO": {"grow": 1.150},
-        "POR": {"grow": 1.000},
-        "SAC": {"grow": 1.100},
-        "SAS": {"grow": 1.000},
-        "TOR": {"grow": 1.300, "dy": 0.0800, "dx": 0.0600},
-        "UTA": {"grow": 1.000},
-        "WAS": {"grow": 1.000},
+        "CHA": {"sx": -0.060},
+        "CHI": {"sy": -0.060},
+        "CLE": {"sy": 0.060},
+        "DAL": {"sz": 0.850},
+        "DET": {"sz": 0.750, "sy": 0.150},
+        "HOU": {"sz": 0.950, "sy": 0.430},
+        "IND": {"sz": 0.780, "sy": 0.115},
+        "MIA": {"sy": 0.060},
+        "OKC": {"sz": 1.200},
+        "ORL": {"sx": -0.060},
+        "PHI": {"sz": 0.850},
+        "PHO": {"sx": -0.060},
+        "TOR": {"sy": 0.010},
     })
     # Marks that are already a ring. The chip's own keyline is still drawn, and
     # sits over the mark's thinner ring, so every chip's border matches while the
@@ -258,7 +246,7 @@ class Layout:
                                        # chip height. The lower line is the
                                        # larger one, so a rule on the exact
                                        # middle sits nearer to it.
-    split_inset: float = 0.090 # blocks held in from the chip edge
+    split_inset: float = 0.065 # blocks held in from the chip edge
     split_ref_left: str = "FRI|27"     # the pair the left sizes are solved
                                        # from, so every chip matches it.
                                        # Empty solves from the month, which
@@ -288,12 +276,17 @@ class Layout:
     # left block is set at the same size as the top line of the right, so
     # they sit on exactly the same level on every chip. Widths then follow
     # the content, since MON has more letters than 02.
+    # "mirror": the right block takes the left block's sizes for that chip,
+    # line for line, instead of being sized to a shared width. Each line is
+    # then shrunk only if it will not fit its own zone, and each rule is cut
+    # to the text above it rather than to a common width.
+    split_mirror_sizes: bool = True 
     split_square: str = "box"    # "rows"|"box"|"block"|"month"|"chip"|"off"
     # Each block is nudged so its marks centre on the chip rather than
     # hanging off the rule: with a big date under a small day, equal
     # clearances leave the left block sitting low. The nudge is clamped so
     # clearances between the lines and the rule are untouched.
-    split_block_centre: float = 0.000
+    split_block_centre: float = 1.000
     split_track_max: float = 0.000  # how much letterspacing may be used to
                                     # make up a line's width, per gap, as a
                                     # fraction of its size. Whatever the
@@ -339,7 +332,20 @@ class Layout:
     # The mark is held inside the gap on both axes, with the same margin
     # of chip left around every one -- sized on width alone, a tall mark
     # runs past the chip's top and bottom and is cut by them.
-    split_crest_contain: bool = True
+    split_crest_contain: bool = False
+    split_crest_pad: float = 0.055     # black held between the mark and the
+                                       # chip's white keyline, of chip height
+    split_crest_buffer: float = 0.030  # space held between the text and the
+                                       # window the mark is cut to, of chip
+                                       # width
+    # Bow the window's sides into a pair of parentheses instead of rounding
+    # its corners. The value is the arc's radius as a multiple of the chip's
+    # height: 0.5 is a semicircle, larger is a gentler curve, 0 is off.
+    split_crest_arc: float = 0.620
+    split_crest_round: float = 0.000   # round the ends of the window the
+                                       # mark is cut to, as a fraction of
+                                       # the chip's height. 0 leaves the
+                                       # square cut; 0.5 makes it a pill.
     split_crest_margin: float = 0.130  # black kept around it, of chip height
     split_crest_grow: float = 1.000 # crest scale through the middle
     split_pad: float = 0.045           # breathing room at each end, of width
@@ -403,6 +409,9 @@ class Layout:
     # A small plate over the middle of the crest carrying the team's code, so
     # a mark you do not recognise still tells you who it is.
     crest_label: bool = True
+    split_label: bool = True            # show the three-letter plate in the
+                                       # split layout too, where the rule
+                                       # would otherwise stand in for it
     crest_label_w: float = 0.560        # plate width, of chip height
     crest_label_h: float = 0.230        # plate height, of chip height
     crest_label_radius: float = 0.440    # corner radius, of plate height
@@ -485,7 +494,7 @@ class Layout:
     # "thickring", applied as the general rule rather than as today's mark.
     # With this on, today needs its own marker again; today_plate still
     # applies over the top.
-    crest_label_accent: bool = True
+    crest_label_accent: bool = False
     # White pill with black letters, board-wide. Pairs with crest_label_accent
     # so the coloured keyline is what separates it from the white crest it
     # sits on.
@@ -534,7 +543,7 @@ class Layout:
     logo_corner_w: float = 0.142        # arc thickness, when corner mode is used
     logo_cap_depth: float = 0.420       # end-cap depth, of arc thickness
     logo_cap_radius: float = 0.170      # end-cap corner radius
-    logo_accent: str = "corner"           # ring | gap | corner | none
+    logo_accent: str = "none"             # ring | gap | corner | none
     logo_ring_w: float = 0.075          # colour ring around the disc
     logo_code: float = 0.330            # team code inside the disc
     logo_mark_circle: bool = False       # W/L sits in a small white disc

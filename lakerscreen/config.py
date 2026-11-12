@@ -312,7 +312,7 @@ class Layout:
     split_roles: bool = False          # every block takes the reference
                                        # pair's two sizes outright
     split_num_dx: float = 0.000 # the date nudged right, of chip w
-    split_box_scale: float = 1.320 # widen the box past what the base
+    split_box_scale: float = 1.480 # widen the box past what the base
                                        # type size gives, up to the zone
     split_box_fit: str = "chip" # how a line reaches the box width:
                                        # "scale" sets every line at one

@@ -152,37 +152,11 @@ class Layout:
     # Every mark picked team by team: how far past the zone it is
     # scaled, and any nudge. The right edge stays pinned to the zone
     # line either way, so none is ever cut off on that side.
-    crest_tune: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
-        "ATL": {"grow": 0.911},
-        "BKN": {"grow": 1.011},
-        "BOS": {"grow": 0.883, "dy": 0.0578, "dx": 0.0733},
-        "CHA": {"grow": 1.150, "dy": -0.1800},
-        "CHI": {"grow": 1.150},
-        "CLE": {"grow": 1.000},
-        "DAL": {"grow": 1.000},
-        "DEN": {"grow": 1.150},
-        "DET": {"grow": 1.150, "dy": 0.2000, "optical": True},
-        "GSW": {"grow": 0.994},
-        "HOU": {"grow": 0.806, "dy": 0.2000, "optical": True, "sdy": 0.030},
-        "IND": {"grow": 0.800},
-        "LAC": {"grow": 1.076, "dy": -0.0600, "dx": 0.0489},
-        "MEM": {"grow": 1.150},
-        "MIA": {"grow": 1.000},
-        "MIL": {"grow": 1.000, "dy": -0.1230, "dx": 0.0800},
-        "MIN": {"grow": 1.150, "dy": -0.0900},
-        "NOL": {"grow": 1.150, "dy": 0.0900},
-        "NYK": {"grow": 1.150, "dy": 0.0700},
-        "OKC": {"grow": 1.600},
-        "ORL": {"grow": 1.150},
-        "PHI": {"grow": 0.911},
-        "PHO": {"grow": 1.150},
-        "POR": {"grow": 1.000},
-        "SAC": {"grow": 1.100},
-        "SAS": {"grow": 1.000},
-        "TOR": {"grow": 1.300, "dy": 0.0800, "dx": 0.0600},
-        "UTA": {"grow": 1.000},
-        "WAS": {"grow": 1.000},
-    })
+    # Every mark is now a circle of one diameter and one ring weight, so
+    # the per-team grow and nudge values no longer apply: they were
+    # measured against the bare artwork, before it was ringed. Git
+    # history holds them if the bare marks ever come back.
+    crest_tune: Dict[str, Dict[str, float]] = field(default_factory=dict)
     # Marks that are already a ring. The chip's own keyline is still drawn, and
     # sits over the mark's thinner ring, so every chip's border matches while the
     # mark stays whole. Sized by radius, not by bounding box: the value is how

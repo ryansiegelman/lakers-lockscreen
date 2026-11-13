@@ -1819,6 +1819,10 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                bsz, txt_col if lay.split_rule_left else None)
         rmode = lay.split_right_played if played else lay.split_right_mode
         rcol = accent
+        if ts in ACCENT_STYLES:
+            # The chip is already the home or away colour, so a rule in that
+            # same colour disappears into it. White reads against both.
+            rcol = pal.text
         if played and lay.split_rule_result:
             rcol = pal.gold if g.won else pal.loss_ink
         _block(rmode, "Rp" if played else "R", x0 + (rlo + rhi) / 2.0,

@@ -358,7 +358,7 @@ class Layout:
     live_cursive_word: str = "Live"
     live_cursive_size: float = 1.050    # of chip height
     live_cursive_alpha: float = 0.28    # how far back it sits
-    played_dim: float = 0.52           # how far a dimmed chip fades, 0-1
+    played_dim: float = 0.700           # how far a dimmed chip fades, 0-1
     played_dim_text: bool = True       # the date and score fade with the rest;
                                        # off, only the chip and crest recede
     played_bar: float = 0.085         # colour bar along a played chip's foot
@@ -468,7 +468,7 @@ class Layout:
     #                 at part strength
     #   accentgrad  - the fill deepens toward the bottom-right, so the colour
     #                 still reads as coming from where the cling was
-    today_style: str = "none"
+    today_style: str = "accent"      
     # Whose contrast the type and the crest follow on an accent-filled chip.
     # "auto" flips them to black on a light body (gold) and leaves them white
     # on a dark one (purple). "white" keeps them white on both, so today's

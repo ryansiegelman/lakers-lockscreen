@@ -69,6 +69,28 @@ class _Canvas:
             tmp, (int(round(center[0] * s - bw / 2.0)),
                   int(round(center[1] * s - bh / 2.0))))
 
+    def ink_box(self, text: str, font):
+        """The tight box around a line's painted marks, in layout space.
+
+        font.getbbox is the LAYOUT box, which for horizontal text is the
+        advance, not the ink -- FRI's getbbox measured 70.0 where the letters
+        actually painted 64.0. The glyph mask's own bbox is the ink, offset
+        by the layout box's origin to put the two in the same coordinates.
+        """
+        key = (getattr(font, "path", ""), font.size, text)
+        hit = _INK_BOX.get(key)
+        if hit is not None:
+            return hit
+        try:
+            gb = font.getbbox(text)
+            mb = font.getmask(text).getbbox()
+            box = (gb[0], gb[1], gb[2], gb[3]) if not mb else (
+                gb[0] + mb[0], gb[1] + mb[1], gb[0] + mb[2], gb[1] + mb[3])
+        except Exception:
+            box = None
+        _INK_BOX[key] = box
+        return box
+
     def ink_width(self, text: str, font, tracking: float = 0.0) -> float:
         """The width of the marks themselves, not of the advance.
 
@@ -78,11 +100,11 @@ class _Canvas:
         """
         if not text:
             return 0.0
-        try:
-            x0, _, x1, _ = font.getbbox(text)
-        except Exception:
+        box = self.ink_box(text, font)
+        if box is None:
             return self.text_width(text, font, tracking)
-        return (x1 - x0 + tracking * self.ss * (len(text) - 1)) / self.ss
+        return (box[2] - box[0]
+                + tracking * self.ss * (len(text) - 1)) / self.ss
 
     def ink_vspan(self, text: str, font):
         """Where a line's ink starts and ends vertically, about its anchor.
@@ -91,13 +113,12 @@ class _Canvas:
         not on its own marks -- so FRI and 27 sit different distances from a
         rule placed on the geometric middle between them.
         """
-        try:
-            _, y0, _, y1 = font.getbbox(text)
-        except Exception:
+        box = self.ink_box(text, font)
+        if box is None:
             return 0.0, 0.0
         # draw_tracked's "c" anchor already centres a line on its own ink,
         # so the marks run half their height either side of the anchor.
-        half = (y1 - y0) / 2.0
+        half = (box[3] - box[1]) / 2.0
         return -half / self.ss, half / self.ss
 
     def ink_offset(self, text: str, font, tracking: float = 0.0) -> float:
@@ -109,10 +130,10 @@ class _Canvas:
         """
         if not text:
             return 0.0
-        try:
-            x0, _, x1, _ = font.getbbox(text)
-        except Exception:
+        box = self.ink_box(text, font)
+        if box is None:
             return 0.0
+        x0, x1 = box[0], box[2]
         tr = tracking * self.ss
         n = len(text) - 1
         adv = assets.tracked_width(font, text, tr)
@@ -613,6 +634,7 @@ def _ink_on(col, pal):
     return pal.badge_text if _luma(col) > 110 else pal.text
 
 
+_INK_BOX: dict = {}
 _CENTROID: dict = {}
 
 
@@ -644,6 +666,19 @@ def _ink_centroid(im: Image.Image, key: str):
     return out
 
 
+def _split_sides(lay):
+    """How far in from each side of the chip the crest's window starts.
+
+    Normally that is each block's own zone. But with the mark pinned to the
+    chip's centre, a right block wider than the left would crop it
+    lopsidedly, so there the tighter side sets both.
+    """
+    sl, sr = lay.split_left, lay.split_right
+    if lay.split_crest_centre == "chip":
+        sl = sr = max(sl, sr)
+    return sl, sr
+
+
 def _split_zones(lay, w: float):
     """Each block's own space, inset from the chip's edge.
 
@@ -651,7 +686,9 @@ def _split_zones(lay, w: float):
     zone sat hard against the side of the chip.
     """
     ins = w * lay.split_inset
-    return (ins, w * lay.split_left), (w * (1.0 - lay.split_right), w - ins)
+    insr = w * (lay.split_inset if lay.split_inset_right < 0
+                else lay.split_inset_right)
+    return (ins, w * lay.split_left), (w * (1.0 - lay.split_right), w - insr)
 
 
 def _split_tokens(g: Game, lay) -> dict:
@@ -1248,8 +1285,14 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                     # Measure against the middle, not the crest's usual zone,
                     # so a scale of 1.0 fills the gap between the type exactly
                     # and nothing is sliced down the side.
-                    room = (w * (1.0 - lay.split_left - lay.split_right)
-                            - 2.0 * h * lay.split_crest_margin)
+                    sl_, sr_ = _split_sides(lay)
+                    gap_w = w * (1.0 - sl_ - sr_)
+                    # Never wider than the window it is shown through: the
+                    # buffer narrows that window, and a mark sized to the raw
+                    # gap was simply cropped harder as the buffer grew rather
+                    # than scaling with it.
+                    room = min(gap_w - 2.0 * h * lay.split_crest_margin,
+                               gap_w - 2.0 * w * lay.split_crest_buffer)
                 by_w = room * crest.height / crest.width
                 if crest_only:
                     size = by_w * lay.live_crest_grow
@@ -1287,8 +1330,11 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 # Centre on the gap between the type, not on the chip: the two
                 # zones are different widths, so the chip's middle sits right
                 # of the gap's middle and the mark would clip the time.
-                mid = x0 + w * lay.split_left + w * (
-                    1.0 - lay.split_left - lay.split_right) / 2.0
+                if lay.split_crest_centre == "chip":
+                    mid = x0 + w / 2.0
+                else:
+                    mid = x0 + w * lay.split_left + w * (
+                        1.0 - lay.split_left - lay.split_right) / 2.0
                 mx = (mid + h * tune.get("sx", 0.0)) * ss - cw_ / 2.0
             elif centre_crest:
                 mx = (x0 + w / 2.0) * ss - cw_ / 2.0
@@ -1338,8 +1384,9 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                     # rectangles leaves the mark with square sides; a rounded
                     # window gives it ends that answer the chip's own.
                     buf = w * lay.split_crest_buffer
-                    lf = (x0 + w * lay.split_left + buf) * ss
-                    rt = (x1 - w * lay.split_right - buf) * ss
+                    sl_, sr_ = _split_sides(lay)
+                    lf = (x0 + w * sl_ + buf) * ss
+                    rt = (x1 - w * sr_ - buf) * ss
                     if lay.split_crest_arc > 0:
                         # Each side is a single arc running the chip's whole
                         # height, so the mark is held between two brackets
@@ -1649,7 +1696,26 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 return
             rule = "~" in mode.split("|")
             m = (split_m or {}).get(key)
-            if (lay.split_mirror_sizes and key != "L"
+            if (lay.split_mirror_width and key != "L"
+                    and (split_m or {}).get("L", {}).get("square") == "chip"):
+                # Each line solved to the left block's width, so both lines
+                # and the rule under them come out the same.
+                ml = split_m["L"]
+                b0 = ml["base"]
+                inner = room * (1.0 - 2.0 * lay.split_pad)
+                want = min(ml["tar"] * lay.split_mirror_gain, inner)
+                szs = {}
+                for i, t in lines:
+                    sz = b0
+                    for _ in range(6):
+                        w0 = c.ink_width(t, c.font(sz), 0)
+                        if w0 <= 0:
+                            break
+                        sz = min(max(sz * (want / w0), b0 * 0.2),
+                                 b0 * lay.split_square_cap)
+                    szs[i] = sz
+                tar = 0.0
+            elif (lay.split_mirror_sizes and key != "L"
                     and (split_m or {}).get("L", {}).get("square") == "chip"):
                 # Sized off the left block, line for line, so both sides carry
                 # the same two sizes on any given chip.
@@ -1697,8 +1763,21 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 # scaled in one step, because ink does not grow exactly with
                 # the font's integer size.
                 b0 = m["base"]
+                even = m.get("sz") or []
+                k = max(0.0, min(1.0, lay.split_even))
+                inner = room * (1.0 - 2.0 * lay.split_pad)
+                day_sz = (h * lay.split_day_size
+                          if (lay.split_day_size > 0 and key == "L") else 0.0)
                 szs = {}
                 for i, t in lines:
+                    if day_sz > 0 and i == 0:
+                        # The day is given its size outright, so MON and FRI
+                        # carry the same letters and differ only in width.
+                        sz = day_sz
+                        while sz > 4 and c.ink_width(t, c.font(sz), 0) > inner:
+                            sz *= 0.97
+                        szs[i] = sz
+                        continue
                     sz = b0
                     for _ in range(6):
                         w0 = c.ink_width(t, c.font(sz), 0)
@@ -1706,8 +1785,16 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                             break
                         nxt = sz * (m["tar"] / w0)
                         sz = min(max(nxt, b0 * 0.2), b0 * lay.split_square_cap)
+                    if k > 0 and i < len(even) and even[i] > 0:
+                        # One size per slot sits level down the column; one
+                        # width sits level across the chip. Blended in log
+                        # space so the middle is a true middle rather than
+                        # the larger size dominating.
+                        sz = (sz ** (1.0 - k)) * (even[i] ** k)
+                        while sz > 4 and c.ink_width(t, c.font(sz), 0) > inner:
+                            sz *= 0.97
                     szs[i] = sz
-                tar = m["tar"]
+                tar = m["tar"] if (k <= 0 and day_sz <= 0) else 0.0
             elif m:
                 szs = {i: m["sz"][i] for i, _ in lines if i < len(m["sz"])}
                 tar = m["tar"]
@@ -1746,8 +1833,11 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 if (lay.split_wl_ink and i < len(slot_tok)
                         and slot_tok[i] == "WL" and g.won is not None):
                     ink = pal.gold if g.won else pal.loss_ink
+                # The rule is cut to this, so it has to be the painted
+                # width: drawn to the advance it ran up to 7px past the
+                # letters it sits under.
                 set_up.append((i, t, ff, tr2, ink,
-                               c.ink_vspan(t, ff), wide + tr2 * n))
+                               c.ink_vspan(t, ff), c.ink_width(t, ff, tr2)))
             rh = h * lay.split_rule_h
             ry = cy + h * lay.split_rule_dy
             boxed = (m or {}).get("square") == "scale"
@@ -1898,7 +1988,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         lf = c.font(lsz)
         # The plate stays the one size on every chip, so a longer code sets
         # itself smaller rather than widening its own plate or running out
-        # of it. Three letters are untouched; NOLA is the only four.
+        # of it. Every code is three letters.
         room = pw - 2.0 * (ph * 0.22)
         while c.text_width(code, lf, tr) > room and lsz > 4:
             lsz *= 0.95

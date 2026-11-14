@@ -284,6 +284,28 @@ class Layout:
     # then shrunk only if it will not fit its own zone, and each rule is cut
     # to the text above it rather than to a common width.
     split_mirror_sizes: bool = True 
+    # Match the left block's WIDTH rather than its sizes: each right line is
+    # sized so its marks span the same width the left block does, the way
+    # the left already sizes its own two lines to one width. The rule then
+    # matches both lines instead of only the wider one.
+    split_mirror_width: bool = True
+    # How much wider than the left block the right one may run. Equal
+    # width is not equal size: "6:30" has twice the characters of "27",
+    # so at one width it comes out half the height. A gain above 1 buys
+    # the right block back some of that height, out of the crest gap.
+    split_mirror_gain: float = 1.3125
+    # How far to trade equal width for equal letter size. At 0 every line is
+    # set so its marks span one width, which is why FRI comes out at 48px and
+    # MON at 29px: MON's letters are two thirds wider at any one size, so it
+    # has to shrink that far to reach the same width. At 1 every line in a
+    # slot carries the same size and the widths differ instead. Both cannot
+    # hold at once for strings of different letters.
+    split_even: float = 0.000
+    # One outright size for the day line, as a fraction of chip height,
+    # instead of a size solved from its width. 0 leaves it to split_even.
+    # Every day name then carries the same letter height and keeps its
+    # own width, which is what a wide MON needs to stop shrinking.
+    split_day_size: float = 0.000
     split_square: str = "box"    # "rows"|"box"|"block"|"month"|"chip"|"off"
     # Each block is nudged so its marks centre on the chip rather than
     # hanging off the rule: with a big date under a small day, equal
@@ -336,6 +358,12 @@ class Layout:
     # of chip left around every one -- sized on width alone, a tall mark
     # runs past the chip's top and bottom and is cut by them.
     split_crest_contain: bool = False
+    # The right zone can be widened on its own when its block needs more
+    # room than the left's. Its own inset then keeps the text the same
+    # distance from the chip's edge, and the crest can stay centred on the
+    # chip rather than on a gap that is no longer central.
+    split_inset_right: float = 0.0576    # -1 follows split_inset
+    split_crest_centre: str = "chip"    # "gap" | "chip"
     split_crest_pad: float = 0.055     # black held between the mark and the
                                        # chip's white keyline, of chip height
     split_crest_buffer: float = 0.030  # space held between the text and the
@@ -426,7 +454,6 @@ class Layout:
     # Keyed by the schedule abbreviation, so the crest and the fixture keep
     # looking themselves up by that and only the lettering changes.
     crest_label_code: Dict[str, str] = field(default_factory=lambda: {
-        "NOL": "NOLA",                  # the NBA writes New Orleans NOP
         "PHO": "PHX",                   # and Phoenix PHX
     })
     crest_label_dy: float = 0.000

@@ -363,7 +363,7 @@ class Layout:
     # distance from the chip's edge, and the crest can stay centred on the
     # chip rather than on a gap that is no longer central.
     split_inset_right: float = 0.0576    # -1 follows split_inset
-    split_crest_centre: str = "chip"    # "gap" | "chip"
+    split_crest_centre: str = "chip"    # "gap" | "chip" | "type"
     split_crest_pad: float = 0.055     # black held between the mark and the
                                        # chip's white keyline, of chip height
     split_crest_buffer: float = 0.030  # space held between the text and the
@@ -495,7 +495,7 @@ class Layout:
     #                 at part strength
     #   accentgrad  - the fill deepens toward the bottom-right, so the colour
     #                 still reads as coming from where the cling was
-    today_style: str = "accent"      
+    today_style: str = "none"      
     # Whose contrast the type and the crest follow on an accent-filled chip.
     # "auto" flips them to black on a light body (gold) and leaves them white
     # on a dark one (purple). "white" keeps them white on both, so today's

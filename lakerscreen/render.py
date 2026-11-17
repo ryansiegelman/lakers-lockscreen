@@ -666,6 +666,29 @@ def _ink_centroid(im: Image.Image, key: str):
     return out
 
 
+def _type_span(lay, split_m, w: float):
+    """Where the type actually ends on each side, chip-relative.
+
+    The crest has always been placed against the ZONE edges, which are not
+    where the letters stop: the left block paints 64px in an 89px zone and
+    the right one 85px in a 93px zone, so the air between the type is not
+    centred on the chip. Measuring the span itself is what makes the black
+    either side of a mark equal.
+    """
+    (llo, lhi), (rlo, rhi) = _split_zones(lay, w)
+    ml = (split_m or {}).get("L") or {}
+    tar = ml.get("tar") or 0.0
+    if not tar:
+        return lhi, rlo
+    lcx, rcx = (llo + lhi) / 2.0, (rlo + rhi) / 2.0
+    if lay.split_mirror_width:
+        inner = (rhi - rlo) * (1.0 - 2.0 * lay.split_pad)
+        want = min(tar * lay.split_mirror_gain, inner)
+    else:
+        want = tar
+    return lcx + tar / 2.0, rcx - want / 2.0
+
+
 def _split_sides(lay):
     """How far in from each side of the chip the crest's window starts.
 
@@ -1285,8 +1308,12 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                     # Measure against the middle, not the crest's usual zone,
                     # so a scale of 1.0 fills the gap between the type exactly
                     # and nothing is sliced down the side.
-                    sl_, sr_ = _split_sides(lay)
-                    gap_w = w * (1.0 - sl_ - sr_)
+                    if lay.split_crest_centre == "type":
+                        t_l, t_r = _type_span(lay, split_m, w)
+                        gap_w = t_r - t_l
+                    else:
+                        sl_, sr_ = _split_sides(lay)
+                        gap_w = w * (1.0 - sl_ - sr_)
                     # Never wider than the window it is shown through: the
                     # buffer narrows that window, and a mark sized to the raw
                     # gap was simply cropped harder as the buffer grew rather
@@ -1330,7 +1357,10 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 # Centre on the gap between the type, not on the chip: the two
                 # zones are different widths, so the chip's middle sits right
                 # of the gap's middle and the mark would clip the time.
-                if lay.split_crest_centre == "chip":
+                if lay.split_crest_centre == "type":
+                    t_l, t_r = _type_span(lay, split_m, w)
+                    mid = x0 + (t_l + t_r) / 2.0
+                elif lay.split_crest_centre == "chip":
                     mid = x0 + w / 2.0
                 else:
                     mid = x0 + w * lay.split_left + w * (
@@ -1384,9 +1414,14 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                     # rectangles leaves the mark with square sides; a rounded
                     # window gives it ends that answer the chip's own.
                     buf = w * lay.split_crest_buffer
-                    sl_, sr_ = _split_sides(lay)
-                    lf = (x0 + w * sl_ + buf) * ss
-                    rt = (x1 - w * sr_ - buf) * ss
+                    if lay.split_crest_centre == "type":
+                        t_l, t_r = _type_span(lay, split_m, w)
+                        lf = (x0 + t_l + buf) * ss
+                        rt = (x0 + t_r - buf) * ss
+                    else:
+                        sl_, sr_ = _split_sides(lay)
+                        lf = (x0 + w * sl_ + buf) * ss
+                        rt = (x1 - w * sr_ - buf) * ss
                     if lay.split_crest_arc > 0:
                         # Each side is a single arc running the chip's whole
                         # height, so the mark is held between two brackets

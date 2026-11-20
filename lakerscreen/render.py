@@ -1528,7 +1528,9 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     def _crest_mark():
         """A W or L on the crest, for a game already played."""
         st = lay.played_crest_mark
-        if st == "none" or crest_at is None or g.won is None:
+        if st == "none" or g.won is None:
+            return
+        if lay.played_crest_mark_anchor != "chip" and crest_at is None:
             return
         def _rim_col():
             r = lay.played_crest_mark_rim_ink
@@ -1540,7 +1542,11 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 return (0, 0, 0, 255)
             return pal.chip_border
 
-        cx_, cy_ = crest_at
+        # The chip's own middle, not the artwork's: anchored to the crest
+        # the plate inherited every team's sx/sy, so Detroit's came out 26px
+        # low and Phoenix's 11px left of where every other one sat.
+        cx_, cy_ = ((x0 + w / 2.0, y0 + h / 2.0)
+                    if lay.played_crest_mark_anchor == "chip" else crest_at)
         cx_ += h * lay.played_crest_mark_dx
         cy_ += h * lay.played_crest_mark_dy
         col = pal.gold if g.won else pal.purple

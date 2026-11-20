@@ -431,6 +431,10 @@ class Layout:
     # alone, "disc" a white circle with the result's colour as the letter,
     # "fill" a gold or purple circle with a white letter, "shade" a black
     # circle so the mark behind still shows through, "ring" an outline.
+    # What the mark is centred on. "crest" follows the artwork, which means
+    # it follows each team's sx/sy nudge -- Detroit's plate came out 26px
+    # low and Phoenix's 8px left. "chip" puts every one in the same place.
+    played_crest_mark_anchor: str = "chip"   # "chip" | "crest"
     played_crest_mark: str = "plate"
     played_crest_mark_size: float = 0.420    # the circle, of chip height
     played_crest_mark_letter: float = 0.660  # letter, of the circle

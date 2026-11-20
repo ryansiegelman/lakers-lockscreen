@@ -1157,10 +1157,16 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         # The border was covered by the ramp; put it back.
         c.rounded_rect((x0, y0, x1, y1), rad, fill=None, outline=keyline, width=bw)
     if quiet and lay.played_hairline > 0:
-        # A hairline on the outer edge, so the chip still has a shape against
-        # the photo while its keyline stays dark.
-        c.rounded_rect((x0, y0, x1, y1), rad,
-                       fill=None, outline=pal.chip_border, width=h * lay.played_hairline)
+        # A hairline standing in for the keyline, which stays dark. It sits
+        # where that keyline's INNER edge would be rather than on the chip's
+        # outer edge: an upcoming chip measures its black from the inside of
+        # an 11px band, so a line on the outer edge left 14px between itself
+        # and the crest where the chip beside it had 4.
+        hw = h * lay.played_hairline
+        ins = (bw - hw) if lay.played_hairline_inset else 0.0
+        c.rounded_rect((x0 + ins, y0 + ins, x1 - ins, y1 - ins),
+                       max(0.0, rad - ins),
+                       fill=None, outline=pal.chip_border, width=hw)
 
     if lay.logo_accent == "gap" and show_accent:
         # White keyline back on top, so the colour reads as a band between the
@@ -2080,6 +2086,13 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
 
     if dimming and lay.played_dim_text:
         _veil()
+        if lay.played_keyline_bright and lay.played_hairline > 0:
+            # Put the outer line back over the veil, so a played chip carries
+            # the same border as one still to come and only its contents
+            # step back.
+            c.rounded_rect((x0, y0, x1, y1), rad, fill=None,
+                           outline=pal.chip_border,
+                           width=h * lay.played_hairline)
     if late_corner:
         _corner()
 

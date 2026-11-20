@@ -397,7 +397,19 @@ class Layout:
                                        # off, only the chip and crest recede
     played_bar: float = 0.085         # colour bar along a played chip's foot
     played_keyline: float = 0.00       # keyline level for a played chip, 0-1
-    played_hairline: float = 0.009     # thin white line on its outer edge,
+    # A played chip's own keyline is left dark; this line stands in for it.
+    # At 0.009 it read 2px against an upcoming chip's 11px, and because it
+    # sat on the outer edge rather than where that band's inner edge falls,
+    # it left 14px of black between itself and the crest where the chip
+    # beside it had 4. Matched to logo_border, both come out the same, and
+    # the veil then fades it with the rest of the chip.
+    played_hairline: float = 0.065     # white line standing in for the
+                                       # keyline, of chip height
+    played_hairline_inset: bool = True  # sit it where the full keyline's
+                                        # inner edge is, not on the outer
+                                        # edge (no-op once the two match)
+    played_keyline_bright: bool = False  # redraw it after the chip has
+                                         # faded, so it stays full white
     played_accent: bool = True         # keep the home/away cling after the game
     # The W/L sits in a small disc rather than loose on the chip's black.
     # "none" leaves the W/L bare, "white" is a white disc with the result's

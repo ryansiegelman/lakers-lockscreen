@@ -439,7 +439,7 @@ class Layout:
     played_crest_mark_size: float = 0.420    # the circle, of chip height
     played_crest_mark_letter: float = 0.660  # letter, of the circle
     played_crest_mark_stroke: float = 0.070  # black keyline on a bare letter
-    played_crest_mark_over_dim: bool = True  # lay it after the veil, so the
+    played_crest_mark_over_dim: bool = False  # lay it after the veil, so the
                                               # result keeps full strength
     played_crest_mark_shape: str = "circle"  # "circle" | "square"
     played_crest_mark_rim: float = 0.000     # white rim, of the badge

@@ -294,6 +294,12 @@ class Layout:
     # so at one width it comes out half the height. A gain above 1 buys
     # the right block back some of that height, out of the crest gap.
     split_mirror_gain: float = 1.3125
+    # A scoreline is the one place matching WIDTH goes wrong: 97 and 109 have
+    # different digit counts, so holding both to one width set 97 at 52px
+    # tall against 109's 32px on the same chip. Both halves take one size
+    # instead, solved off this reference, and their widths differ.
+    split_score_even: bool = True
+    split_score_ref: str = "100"
     # How far to trade equal width for equal letter size. At 0 every line is
     # set so its marks span one width, which is why FRI comes out at 48px and
     # MON at 29px: MON's letters are two thirds wider at any one size, so it

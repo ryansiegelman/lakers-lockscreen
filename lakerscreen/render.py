@@ -1731,7 +1731,26 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                 return
             rule = "~" in mode.split("|")
             m = (split_m or {}).get(key)
-            if (lay.split_mirror_width and key != "L"
+            if (lay.split_mirror_width and key == "Rp"
+                    and lay.split_score_even
+                    and (split_m or {}).get("L", {}).get("square") == "chip"):
+                # One size for both halves of a scoreline. Solved off a
+                # three-digit reference so a score reads the same height on
+                # every chip, and a two-digit one is simply narrower.
+                ml = split_m["L"]
+                b0 = ml["base"]
+                inner = room * (1.0 - 2.0 * lay.split_pad)
+                want = min(ml["tar"] * lay.split_mirror_gain, inner)
+                sz = b0
+                for _ in range(6):
+                    w0 = c.ink_width(lay.split_score_ref, c.font(sz), 0)
+                    if w0 <= 0:
+                        break
+                    sz = min(max(sz * (want / w0), b0 * 0.2),
+                             b0 * lay.split_square_cap)
+                szs = {i: sz for i, _ in lines}
+                tar = 0.0
+            elif (lay.split_mirror_width and key != "L"
                     and (split_m or {}).get("L", {}).get("square") == "chip"):
                 # Each line solved to the left block's width, so both lines
                 # and the rule under them come out the same.

@@ -2399,7 +2399,7 @@ def _draw_footer(c: _Canvas, size, month_key: str, record: Tuple[int, int],
         c.paste_centered(wordmark, (cx, H * lay.wordmark_y), W * lay.wordmark_width)
 
     c.text((cx, H * lay.record_y), "%d-%d" % record,
-           c.font(H * lay.record_size, "light"), pal.text,
+           c.font(H * lay.record_size, lay.record_weight), pal.text,
            tracking=H * lay.record_size * lay.record_tracking, anchor="mc")
 
 

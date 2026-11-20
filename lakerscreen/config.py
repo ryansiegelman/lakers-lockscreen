@@ -655,12 +655,13 @@ class Layout:
     grid_bottom_pad: float = 0.0
     wordmark_y: float = 0.9094          # level with the flashlight/camera buttons
     wordmark_width: float = 0.235       # of image width
-    record_y: float = 0.9345
+    record_y: float = 0.9363
     month_y: float = 0.8330
     month_size: float = 0.0215          # of image height
-    record_size: float = 0.0112
+    record_size: float = 0.0165
     month_tracking: float = 0.300
-    record_tracking: float = 0.150
+    record_tracking: float = 0.140
+    record_weight: str = "light"        # the face the record is set in
 
 
 @dataclass

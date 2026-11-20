@@ -426,6 +426,49 @@ class Layout:
     played_badge_stroke: float = 0.06  # black keyline on a white letter over a
                                        # filled disc, of the letter's size; it
                                        # is what separates white from gold
+    # A W or L on the crest itself for a played game, so the result reads
+    # without parsing two numbers. "none" leaves it off; "bare" is the letter
+    # alone, "disc" a white circle with the result's colour as the letter,
+    # "fill" a gold or purple circle with a white letter, "shade" a black
+    # circle so the mark behind still shows through, "ring" an outline.
+    played_crest_mark: str = "plate"
+    played_crest_mark_size: float = 0.420    # the circle, of chip height
+    played_crest_mark_letter: float = 0.660  # letter, of the circle
+    played_crest_mark_stroke: float = 0.070  # black keyline on a bare letter
+    played_crest_mark_over_dim: bool = True  # lay it after the veil, so the
+                                              # result keeps full strength
+    played_crest_mark_shape: str = "circle"  # "circle" | "square"
+    played_crest_mark_rim: float = 0.000     # white rim, of the badge
+    played_crest_mark_dx: float = 0.000      # nudge off the crest's centre,
+    played_crest_mark_dy: float = 0.000      # of chip height
+    played_crest_mark_alpha: float = 1.000   # for "ghost", how solid it is
+    # The badge's body and its letter. loss_ink is a lightened purple meant
+    # for a bare L on black; on a filled badge it reads washed out, so
+    # "result" uses the official purple. "flip" puts the Lakers' other
+    # colour in the letter -- purple on gold, gold on purple -- which is a
+    # far stronger pairing than white on gold.
+    played_crest_mark_badge: str = "result"  # "result" | "white" | "black"
+    played_crest_mark_ink: str = "white"      # "flip" | "white" | "black"
+                                             #  | "result"
+    played_crest_mark_rim_ink: str = "white"  # the rim's own colour
+    played_crest_mark_gap: float = 0.000     # black ring held outside the
+                                             # badge, of badge size, so it
+                                             # separates from busy artwork
+    played_crest_mark_opacity: float = 1.000  # badge body, so the mark can
+                                              # still read through it
+    # "plate" rebuilds the old three-letter plate -- black body, white
+    # keyline outside it, rounded like the chip -- with a single white
+    # letter in it. Its height and radius follow crest_label_*; only the
+    # width is its own, since one letter needs far less than three.
+    played_crest_mark_plate_w: float = 0.380  # plate width, of chip height
+    played_crest_mark_plate_h: float = 0.280  # plate height, of chip height
+    # The plate's three colours, each on its own. "result" is gold for a win
+    # and purple for a loss; "flip" is the other one of that pair, which is
+    # what keeps a letter off white-on-gold.
+    played_crest_mark_plate_body: str = "black"  # "black"|"result"|"white"
+    played_crest_mark_plate_ring: str = "white"  # "white"|"result"|"flip"
+                                                 #  |"black"|"none"
+    played_crest_mark_plate_ring_w: float = 1.000  # of crest_label_ring
     played_accent_over_dim: bool = False  # True lays that cling after the veil,
                                        # so the one spot of colour keeps its
                                        # strength while the chip recedes; off,

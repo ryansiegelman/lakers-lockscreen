@@ -1027,6 +1027,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
     bw = h * lay.logo_border
     off = h * lay.logo_offset
     accent = pal.gold if g.is_home else pal.purple
+    crest_at = None          # where the mark landed, for the W/L over it
 
     played = g.completed and g.won is not None
     # A game underway can drop its text entirely and put the crest in the
@@ -1402,6 +1403,7 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
             tmp.alpha_composite(
                 m, (int(round(mx)),
                     int(round((dcy + my_off) * ss - ch_ / 2.0))))
+            crest_at = ((mx + cw_ / 2.0) / float(ss), dcy + my_off)
             mask = Image.new("L", c.layer.size, 0)
             # Held off the chip's own keyline, so the mark never runs into the
             # white border it is cut by.
@@ -1522,6 +1524,137 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
                                      int(round(csz * c.ss))) or c.font(csz)
         c.text((dcx, dcy), g.opponent, cfont,
                pal.text if lay.logo_disc_invert else pal.badge_text, anchor="mc")
+
+    def _crest_mark():
+        """A W or L on the crest, for a game already played."""
+        st = lay.played_crest_mark
+        if st == "none" or crest_at is None or g.won is None:
+            return
+        def _rim_col():
+            r = lay.played_crest_mark_rim_ink
+            if r == "flip":
+                return pal.purple if g.won else pal.gold
+            if r == "result":
+                return pal.gold if g.won else pal.purple
+            if r == "black":
+                return (0, 0, 0, 255)
+            return pal.chip_border
+
+        cx_, cy_ = crest_at
+        cx_ += h * lay.played_crest_mark_dx
+        cy_ += h * lay.played_crest_mark_dy
+        col = pal.gold if g.won else pal.purple
+        letter = "W" if g.won else "L"
+        badge_col = {"white": pal.chip_border,
+                     "black": (0, 0, 0, 220)}.get(
+                         lay.played_crest_mark_badge, col)
+        if lay.played_crest_mark_ink == "flip":
+            # The other Lakers colour, so the letter is never white on gold.
+            ink_col = pal.purple if g.won else pal.gold
+            if lay.played_crest_mark_badge in ("white", "black"):
+                ink_col = col
+        elif lay.played_crest_mark_ink == "result":
+            ink_col = col
+        elif lay.played_crest_mark_ink == "black":
+            ink_col = (0, 0, 0, 255)
+        else:
+            ink_col = pal.text
+        d = h * lay.played_crest_mark_size
+        box = (cx_ - d / 2.0, cy_ - d / 2.0, cx_ + d / 2.0, cy_ + d / 2.0)
+        # A square badge keeps the chip's own corner language; a circle
+        # answers the crests, which are mostly round.
+        rr = d / 2.0 if lay.played_crest_mark_shape == "circle" else d * 0.240
+        lsz = d * lay.played_crest_mark_letter
+
+        if st == "knockout":
+            # The letter is cut OUT of the badge, so the crest shows through
+            # it. A filled letter on a filled badge says the same thing twice.
+            ss2 = c.ss
+            lay_ = Image.new("RGBA", c.layer.size, (0, 0, 0, 0))
+            ld = ImageDraw.Draw(lay_)
+            ld.rounded_rectangle(
+                [box[0] * ss2, box[1] * ss2, box[2] * ss2, box[3] * ss2],
+                radius=int(round(rr * ss2)), fill=badge_col)
+            cut = Image.new("L", c.layer.size, 255)
+            assets.draw_tracked(ImageDraw.Draw(cut),
+                                (cx_ * ss2, cy_ * ss2), letter,
+                                c.font(lsz), 0, tracking_px=0.0, anchor="mc")
+            lay_.putalpha(ImageChops.multiply(lay_.getchannel("A"), cut))
+            c.layer.alpha_composite(lay_)
+            return
+
+        if lay.played_crest_mark_gap > 0 and st in ("fill", "disc", "dot"):
+            # A black ring just outside the badge, the same idea as the
+            # buffer that holds the crest off the type: it stops a badge
+            # from fusing with whatever part of the mark it lands on.
+            gp = d * lay.played_crest_mark_gap
+            c.rounded_rect((box[0] - gp, box[1] - gp, box[2] + gp,
+                            box[3] + gp), rr + gp, fill=(0, 0, 0, 255))
+        if lay.played_crest_mark_opacity < 1.0:
+            badge_col = badge_col[:3] + (
+                int(round(255 * lay.played_crest_mark_opacity)),)
+        if st == "plate":
+            # The old three-letter plate, carrying one letter: a black body
+            # with a white keyline outside it, rounded like the chip itself.
+            pw2 = h * lay.played_crest_mark_plate_w
+            ph2 = h * lay.played_crest_mark_plate_h
+            pbox = (cx_ - pw2 / 2.0, cy_ - ph2 / 2.0,
+                    cx_ + pw2 / 2.0, cy_ + ph2 / 2.0)
+            prr = ph2 * lay.crest_label_radius
+            flip = pal.purple if g.won else pal.gold
+            pick = {"result": col, "flip": flip, "white": pal.chip_border,
+                    "black": (0, 0, 0, 255)}
+            body = pick.get(lay.played_crest_mark_plate_body,
+                            pal.chip_fill[:3] + (255,))
+            ring = lay.played_crest_mark_plate_ring
+            gw2 = (ph2 * lay.crest_label_ring
+                   * lay.played_crest_mark_plate_ring_w) if ring != "none" \
+                else 0.0
+            if gw2 > 0:
+                c.rounded_rect((pbox[0] - gw2, pbox[1] - gw2,
+                                pbox[2] + gw2, pbox[3] + gw2),
+                               prr + gw2, fill=pick.get(ring, pal.chip_border))
+            c.rounded_rect(pbox, prr, fill=body)
+            c.text((cx_, cy_), letter,
+                   c.font(ph2 * lay.played_crest_mark_letter), ink_col,
+                   anchor="mc")
+            return
+        ink, sw = ink_col, 0.0
+        if st == "dot":
+            # No letter at all: the colour alone says win or loss.
+            c.rounded_rect(box, rr, fill=badge_col)
+            if lay.played_crest_mark_rim > 0:
+                c.rounded_rect(box, rr, fill=None, outline=_rim_col(),
+                               width=d * lay.played_crest_mark_rim)
+            return
+        if st == "ghost":
+            # No badge at all: the letter itself, large and held back, so the
+            # mark still reads through it.
+            a = int(round(255 * lay.played_crest_mark_alpha))
+            c.text((cx_, cy_), letter, c.font(d), col[:3] + (a,),
+                   anchor="mc")
+            return
+        if st == "disc":
+            c.rounded_rect(box, rr, fill=pal.chip_border)
+        elif st == "fill":
+            if lay.played_crest_mark_rim > 0:
+                c.rounded_rect(box, rr, fill=_rim_col())
+                r2 = d * lay.played_crest_mark_rim
+                box = (box[0] + r2, box[1] + r2, box[2] - r2, box[3] - r2)
+                rr = max(0.0, rr - r2)
+            c.rounded_rect(box, rr, fill=badge_col)
+        elif st == "shade":
+            c.rounded_rect(box, rr, fill=(0, 0, 0, 220))
+            ink = pal.text
+        elif st == "ring":
+            c.rounded_rect(box, rr, fill=None, outline=col,
+                           width=d * 0.090)
+        if st == "bare":
+            # Nothing behind it, so it needs its own separation from the
+            # artwork it is sitting on.
+            sw = lsz * lay.played_crest_mark_stroke
+        c.text((cx_, cy_), letter, c.font(lsz), ink,
+               anchor="mc", stroke_width=sw, stroke_fill=(0, 0, 0, 255))
 
     def _veil():
         """Fade the finished chip back, so the games still to come read first."""
@@ -2084,8 +2217,12 @@ def _draw_chip_logo(c: _Canvas, box, g: Game, cfg: Config, scale: float = 1.0,
         c.rounded_rect((tcx - rw / 2.0, ry - rh / 2.0, tcx + rw / 2.0, ry + rh / 2.0),
                        rh / 2.0, fill=pal.gold)
 
+    if played and not lay.played_crest_mark_over_dim:
+        _crest_mark()
     if dimming and lay.played_dim_text:
         _veil()
+    if played and lay.played_crest_mark_over_dim:
+        _crest_mark()
         if lay.played_keyline_bright and lay.played_hairline > 0:
             # Put the outer line back over the veil, so a played chip carries
             # the same border as one still to come and only its contents
